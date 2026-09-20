@@ -1,0 +1,104 @@
+{
+  "schema_version": "1.0",
+  "team_id": "contest2026_501_jixunCodec",
+  "github_login": "zhangiws",
+  "generator": "codex-collector@1.3.0+codex-rollout-adaptor",
+  "updated_at": "2026-09-20T13:24:50.852Z",
+  "sessions": [
+    {
+      "session_id": "01a089e1-c962-71f1-aee6-3b3ed2f367a2",
+      "tool": "codex",
+      "started_at": "2026-09-10T05:55:47.589Z",
+      "last_event_at": "2026-09-18T01:32:21.520Z",
+      "event_count": 49473,
+      "raw_event_count": 111906,
+      "file_path": "logs/zhangiws/2026-09-18/codex__01a089e1-c962-71f1-aee6-3b3ed2f367a2.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "deepseek-flash",
+      "parent_session_id": "01a089e1-c962-71f1-aee6-3b3ed2f367a2",
+      "source_integrity": {
+        "main_sha256": "d90d47083d108b270098d129261682ec574fd4e06ca422693650ad10c411731c",
+        "main_size": 395243870,
+        "main_mtime": "2026-09-18T01:34:39.437563+00:00",
+        "captured_at": "2026-09-20T13:24:48.029Z"
+      }
+    },
+    {
+      "session_id": "01a0ad05-b996-7380-b60c-b2d73dbe9666",
+      "tool": "codex",
+      "started_at": "2026-09-17T01:40:37.697Z",
+      "last_event_at": "2026-09-17T04:05:01.454Z",
+      "event_count": 409,
+      "raw_event_count": 962,
+      "file_path": "logs/zhangiws/2026-09-17/codex__01a0ad05-b996-7380-b60c-b2d73dbe9666.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "mimo-v2.5",
+      "parent_session_id": "01a0ad05-b996-7380-b60c-b2d73dbe9666",
+      "source_integrity": {
+        "main_sha256": "491b9b0b2f1dcb8439f68aa7a8777a977233672706288a9a14610bd29b77ef25",
+        "main_size": 2041879,
+        "main_mtime": "2026-09-17T04:05:01.483319+00:00",
+        "captured_at": "2026-09-20T13:24:48.098Z"
+      }
+    },
+    {
+      "session_id": "01a0b225-bc15-71d3-ad79-d6eab0dedf08",
+      "tool": "codex",
+      "started_at": "2026-09-18T01:33:54.505Z",
+      "last_event_at": "2026-09-20T06:48:59.535Z",
+      "event_count": 22753,
+      "raw_event_count": 49591,
+      "file_path": "logs/zhangiws/2026-09-20/codex__01a0b225-bc15-71d3-ad79-d6eab0dedf08.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "deepseek-flash",
+      "parent_session_id": "01a0b225-bc15-71d3-ad79-d6eab0dedf08",
+      "source_integrity": {
+        "main_sha256": "9b95fef85c4dc78bdc4f0bd5d7434b86c242eea06f86fdc44d1b498208408542",
+        "main_size": 155391338,
+        "main_mtime": "2026-09-20T07:07:21.818080+00:00",
+        "captured_at": "2026-09-20T13:24:50.463Z"
+      }
+    },
+    {
+      "session_id": "01a0bd4f-7da4-70b2-aa55-e7b52be36863",
+      "tool": "codex",
+      "started_at": "2026-09-20T05:34:59.279Z",
+      "last_event_at": "2026-09-20T05:39:25.648Z",
+      "event_count": 42,
+      "raw_event_count": 95,
+      "file_path": "logs/zhangiws/2026-09-20/codex__01a0bd4f-7da4-70b2-aa55-e7b52be36863.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "deepseek-flash",
+      "parent_session_id": "01a0b225-bc15-71d3-ad79-d6eab0dedf08",
+      "source_integrity": {
+        "main_sha256": "ecabb422b6326afb45cb4cd3d599eea65c402744c630ed75940c0a414c36aa75",
+        "main_size": 847300,
+        "main_mtime": "2026-09-20T05:34:58.568929+00:00",
+        "captured_at": "2026-09-20T13:24:50.488Z"
+      }
+    },
+    {
+      "session_id": "01a0bda5-0d2c-73c3-893d-13c1fe09dd9a",
+      "tool": "codex",
+      "started_at": "2026-09-20T07:09:13.960Z",
+      "last_event_at": "2026-09-20T13:24:41.029Z",
+      "event_count": 3123,
+      "raw_event_count": 6677,
+      "file_path": "logs/zhangiws/2026-09-20/codex__01a0bda5-0d2c-73c3-893d-13c1fe09dd9a.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "deepseek-flash",
+      "parent_session_id": "01a0bda5-0d2c-73c3-893d-13c1fe09dd9a",
+      "source_integrity": {
+        "main_sha256": "c1774d739624629f379b1af2a92b92b723c69013f6f00c22d721af53bb8cd41e",
+        "main_size": 23831664,
+        "main_mtime": "2026-09-20T07:09:13.952574+00:00",
+        "captured_at": "2026-09-20T13:24:50.852Z"
+      }
+    }
+  ]
+}
