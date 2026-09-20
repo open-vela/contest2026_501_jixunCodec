@@ -1,0 +1,3 @@
+interface:
+  display_name: "Jixun Codec Rate Guard"
+  short_description: "Validate Jixun Codec rate, timing, and fingerprint consistency"

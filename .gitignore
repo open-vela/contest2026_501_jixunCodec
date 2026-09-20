@@ -1,0 +1,27 @@
+# Build output
+build/
+out/
+*.o
+*.a
+*.elf
+*.hex
+*.map
+
+# Python and local test output
+__pycache__/
+*.py[cod]
+_pc_voice_rx/
+_raw_*.txt
+
+# Local editor and OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+
+# Never ignore the exported contest AI logs.
+!logs/
+!logs/**/*.jsonl
+
+# Keep large local deliverables outside the submitted repository.
+deliverables/

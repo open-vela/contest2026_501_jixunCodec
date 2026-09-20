@@ -1,0 +1,48 @@
+[TIME] nsh_ready t=1.531s
+[TIME] configured t=2.165s
+[TIME] rx_ready t=2.289s
+[TIME] tx_started t=2.331s
+=== AI TOKEN RELAY ===
+PC forwards tokens only. No PCM is relayed.
+PCM capture directory: _pc_voice_rx
+requested playback gain: 4x
+requested microphone gain: 14
+buffered playback: 1
+stream playback: 0
+PC stream playback: 0
+dual-board split decode: 0
+dual-board pipeline decode: 0
+[INJECT] t=4.426s playing host/_demo_assets/ai_token_demo_cn.wav
+[TX]   录音结束: 2000 ms, 收到 32000 样本 (2.00 s)
+[TX]   录音统计: 峰值=16024 平均|采样|=819.5
+[TX]   编码+发送：4 块 x 8000 样本 (0.50 s/块)
+[TX]   块 1/4: 8000 样本 -> 30 token / 90 帧 / 编码 1000 ms
+[TOKEN] t=8.984s chunk=00 tokens=30 bits=17 bytes=64 frag=0/1 tokens_per_second=60.0 orig_samples=8000 first=[119455,54494,120478,120470,119438,120463,94926,62926,...]
+[RELAY] t=9.037s sent chunk=00 fragments=1 bytes=112
+[TX] [usb] token frame chunk=0 tokens=30 bits=17 payload=64 bytes
+[RX] t=9.100s [usb] received chunk=0 tokens=30 bits=17 bytes=64 frags=1
+[TX]   块 2/4: 8000 样本 -> 30 token / 90 帧 / 编码 900 ms
+[TOKEN] t=9.840s chunk=01 tokens=30 bits=17 bytes=64 frag=0/1 tokens_per_second=60.0 orig_samples=8000 first=[112513,112457,126367,54362,56522,128666,127183,120471,...]
+[RELAY] t=9.898s sent chunk=01 fragments=1 bytes=112
+[TX] [usb] token frame chunk=1 tokens=30 bits=17 payload=64 bytes
+[RX] t=10.584s   块 0 解码 1510 ms -> 8000 采样 (0.50 s)
+[RX] t=10.637s [usb] received chunk=1 tokens=30 bits=17 bytes=64 frags=1
+[TX]   块 3/4: 8000 样本 -> 30 token / 90 帧 / 编码 900 ms
+[TOKEN] t=10.761s chunk=02 tokens=30 bits=17 bytes=64 frag=0/1 tokens_per_second=60.0 orig_samples=8000 first=[29617,93271,127899,120525,127645,120734,127710,54414,...]
+[RELAY] t=10.821s sent chunk=02 fragments=1 bytes=112
+[TX] [usb] token frame chunk=2 tokens=30 bits=17 payload=64 bytes
+[TX]   块 4/4: 8000 样本 -> 30 token / 90 帧 / 编码 900 ms
+[TOKEN] t=11.622s chunk=03 tokens=30 bits=17 bytes=64 frag=0/1 tokens_per_second=60.0 orig_samples=8000 first=[119454,120542,128926,120005,54966,120463,119446,54194,...]
+[TX] [usb] token frame chunk=3 tokens=30 bits=17 payload=64 bytes last
+[RX] t=11.996s   块 1 解码 1410 ms -> 8000 采样 (0.50 s)
+[RX] t=12.059s [usb] received chunk=2 tokens=30 bits=17 bytes=64 frags=1
+[RELAY] t=12.114s sent chunk=03 fragments=1 bytes=112
+[RX] t=13.411s   块 2 解码 1420 ms -> 8000 采样 (0.50 s)
+[RX] t=13.474s [usb] received chunk=3 tokens=30 bits=17 bytes=64 frags=1 last
+[RX] t=14.891s   块 3 解码 1410 ms -> 8000 采样 (0.50 s)
+[RX] t=14.944s   播放块 3（整段缓冲） ...
+[RX] t=14.945s [Voice] 播放数据: 输出=2400 采样 非零=2396(99%) 峰值=32112 均值=-884
+[RX] t=16.851s [Voice] 播放完成
+[PROGRESS] t=16.851s played=1/1 relayed=4
+=== DONE elapsed=16.852s fragments=4 groups=4 played=1 ===
+[PCM] no complete audio captures

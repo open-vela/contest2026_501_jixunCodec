@@ -1,0 +1,10 @@
+Jixun AI Codec
+Copyright 2026 JixunCodec contributors
+
+This repository contains project-specific source code together with a patch
+against the openvela/NuttX tree. The openvela, NuttX, ESP-IDF, ESP-NN and other
+upstream components remain under their respective upstream licenses.
+
+The model weights, test audio, technical report, demonstration video and photos
+in this repository are supplied for the 2026 openvela AI hardware developer
+contest submission and must not be represented as third-party upstream assets.

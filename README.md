@@ -1,148 +1,122 @@
-# contest2026_501_jixunCodec
-
-👋 欢迎参加 **2026 首届 openvela AI 硬件开发者大赛**！
-
-这是组委会为你的队伍创建的**专属参赛仓库**（本仓为样例/模板，队伍编号 `501`；你看到的将是你自己的 `contest2026_<编号>_<队伍名>`）。比赛期间，你的全部参赛代码、打包产物与 AI Coding 日志都提交到这里。
-
-> 本仓既是「代码仓」，又内置了一键拉取整套 openvela 工程的 `repo` 清单（manifest）。你只需跟它打交道，**自始至终只动一个文件夹**。
-
----
-
-## 一、先读这些官方文档
-
-**通用（所有赛道必读）：**
-
-| 文档                                                                                                                                     | 用途                                           |
-| ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| [《大赛总览》](https://github.com/open-vela/docs/blob/dev-ai-contest-2026/zh-cn/contest_2026/contest_overview.md)                        | 赛道、流程、评分、资源，建议先通读             |
-| [《参赛代码提交指南》](https://github.com/open-vela/docs/blob/dev-ai-contest-2026/zh-cn/contest_2026/code_submission_guide.md)           | 仓库获取、提交流程、时间与权限（**以此为准**） |
-| [《AI Coding 日志归集与提交手册》](https://github.com/open-vela/docs/blob/dev-ai-contest-2026/zh-cn/contest_2026/ai_coding_log_guide.md) | 如何导出 AI 对话日志并提交到 `logs/`           |
-
-**按你的赛道选读（三选一）：**
-
-| 赛道                  | 教程导航                                                                                                                                                 |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 快应用 / 手表应用创新 | [快应用教程导航](https://github.com/open-vela/docs/blob/dev-ai-contest-2026/zh-cn/contest_2026/quickapp/quickapp_guide_index.md)                         |
-| AI 硬件产品创新       | [AI 硬件赛道教程导航](https://github.com/open-vela/docs/blob/dev-ai-contest-2026/zh-cn/contest_2026/ai_hardware/ai_hardware_guide_index.md)              |
-| 新硬件适配            | [新硬件适配赛道教程导航](https://github.com/open-vela/docs/blob/dev-ai-contest-2026/zh-cn/contest_2026/hardware_porting/hardware_porting_guide_index.md) |
-
----
-
-## 二、第一步：拉取完整工程
-
-用组委会提供的命令一键拉取「openvela 全量源码 + 你的专属仓」：
-
-```bash
-repo init -u https://github.com/open-vela/contest2026_501_jixunCodec \
-  -b dev-ai-contest-2026 -m contest2026_501_jixunCodec.xml
-repo sync -c -j8
-```
-
-同步后，你的整个仓库位于工作区的 `contest2026_501_jixunCodec/`，openvela 全量源码在外层（`nuttx/`、`apps/`、`packages/`、`vendor/` 等）。
-
----
-
-## 三、第二步：在哪里写代码
-
-**只在自己的仓目录 `contest2026_501_jixunCodec/` 里开发。** 不同作品形态放在对应子目录，manifest 会通过 `<linkfile>` 把它们**软链**到 openvela 编译树该在的位置——你不用手动 copy：
-
-| 作品形态 | 你的代码放这里             | 系统自动映射到                                 |
-| -------- | -------------------------- | ---------------------------------------------- |
-| 应用     | `app/hello_app/`           | `packages/demos/contest2026_501_hello_app`     |
-| 快应用   | `quickapp/hello_quickapp/` | `packages/apps/contest2026_501_hello_quickapp` |
-| 板级适配 | `board/contest_board/`     | `vendor/openvela/boards/contest2026_501_board` |
-
-> 用不到的形态目录可以删掉；新增作品时按同样规则加子目录，并在 `contest2026_501_jixunCodec.xml` 里补一条 `<linkfile>` 映射即可。**生产仓库（packages/nuttx/vendor 等）零改动。**
-
-建议仓库目录约定（便于评委定位）：
-
-```text
-app/ | quickapp/ | board/   # 你的作品代码
-logs/                       # AI Coding 日志（主动导出后提交，格式见 logs/README.md）
-README.md                   # 作品说明（提交前请改成你自己的，见第六节）
-```
-
-> 仓内附带了一个 `.gitignore.example`，给出了**编译产物**等不需要进仓的文件示例。如需启用，`cp .gitignore.example .gitignore` 后按需增删即可。**注意 `logs/` 下最终导出的 AI Coding 日志必须提交，不要忽略。**
->
-> `logs/` 的目录结构与提交格式见 [logs/README.md](logs/README.md)。
-
----
-
-## 四、第三步：编译与运行
-
-编译/运行步骤随作品形态不同而不同，请参考你所在赛道的教程导航：
-
-- 快应用 / 手表应用：[快应用教程导航](https://github.com/open-vela/docs/blob/dev-ai-contest-2026/zh-cn/contest_2026/quickapp/quickapp_guide_index.md)（含模拟器与开发板部署）。
-- AI 硬件产品创新：[AI 硬件赛道教程导航](https://github.com/open-vela/docs/blob/dev-ai-contest-2026/zh-cn/contest_2026/ai_hardware/ai_hardware_guide_index.md)（环境搭建、编译烧录、Skill 开发）。
-- 新硬件适配：[新硬件适配赛道教程导航](https://github.com/open-vela/docs/blob/dev-ai-contest-2026/zh-cn/contest_2026/hardware_porting/hardware_porting_guide_index.md)（BSP 移植、最小 NSH 基线）。
-
-子目录已通过 manifest 中的 `<linkfile>` 软链进 openvela 编译树，因此构建在 openvela 工作区**根目录**（即你这个仓的上一级）进行。openvela 使用 `build.sh` 作为统一入口，接收一个 **board config 路径**作为参数：
-
-```bash
-# 进入 openvela 工作区根目录（你的仓的上一级）
-cd ..
-
-# 通用语法：第一个参数是 board config 路径，第二个参数可以是 menuconfig / distclean 等
-./build.sh <board-config-path> [menuconfig|distclean] [-j8]
-```
-
-> 具体的 board config 路径、目标产物、模拟器/真机部署方式请以你所在赛道的教程导航为准。本仓 `app/` `quickapp/` `board/` 三个示例骨架对应的 Kconfig 选项可通过 `menuconfig` 启用。
-
----
-
-## 五、第四步：提交作品
-
-1. **fork** 你的专属仓 → 开发 → `git commit` 并推送 → 向专属仓发起 **Pull Request**，可**自行 review 并合入**（无需等组委会）。
-2. **AI Coding 日志**：与 AI 工具的对话会自动记录到本机 staging（不会自动上传），需你**主动导出/打包**选定会话到仓内 `logs/` 目录后一并提交。详见[《AI Coding 日志归集与提交手册》](https://github.com/open-vela/docs/blob/dev-ai-contest-2026/zh-cn/contest_2026/ai_coding_log_guide.md)。
-3. 若需改动 **nuttx 等公共仓库**，不在本仓改，而是 fork 对应公共仓、以 PR 提交到 `dev-ai-contest-2026` 分支，由组委会 review 后合入。
-
-> ⏰ **提交作品截止：9 月 20 日**。截止后统一收回 push 权限，仍可查看 / clone。
->
-> 获奖后再按要求将作品 PR 至 openvela 上游对应仓库（走标准 PR + CI 流程）。
-
-### 关于 PR 与 CLA
-
-- 本仓所有改动通过 **Pull Request** 合入（分支保护强制，可自行合入自己的 PR）。
-- 首次贡献需在[**官网签署 CLA**](https://openvela.com/#/community/cla)；PR 上会自动跑 `cla/signature` 检查，在官网签署成功后，在 PR 评论 `/check-cla` 复检即可通过。
-
----
-
-## 六、提交前：把本 README 改成你的作品说明
-
-本文件目前是组委会给的**使用说明书**。**作品提交前，请把它替换成你自己作品的说明**，方便评委快速了解你做了什么、怎么跑起来。建议至少包含以下内容：
-
-```markdown
-# <你的作品名>
+# 极讯 AI Codec：端侧神经 Token 语音通信系统
 
 ## 一、作品简介
-<一句话/一段话说明这个作品是什么、解决什么问题、亮点在哪>
+
+极讯 AI Codec 在两块 ESP32-S3-BOX V2.0 上运行 openvela/NuttX，实现端侧神经语音编解码与双板 Token 传输。发送端把 16 kHz PCM 编码为离散 FSQ Token，接收端完成分片校验、重组和神经解码后播放语音；全链路只传输 Token，不传输 PCM。
+
+系统提供 `1 kbps`、`3 kbps`、`6 kbps` 三档码率。PC 控制台可选择码率并发起测试，板端界面统一以 `tokens/s` 展示实际 Token 速率。测试音当前为 2 秒，仅用于固定对照；链路按 500 ms 分块连续流水，并不限制语音时长。
 
 ## 二、选题方向
-<快应用 / 手表应用创新 ｜ AI 硬件产品创新 ｜ 新硬件适配 ｜ 自定方向，并简述理由>
 
-## 三、目录结构
-<列出你这个仓里各目录/文件的作用，例如：>
-- `app/xxx/`        — <说明>
-- `board/xxx/`      — <说明>
-- `quickapp/xxx/`   — <说明>
-- `logs/`           — AI Coding 日志
-- `docs/` 或其他    — <说明>
+选题方向：**AI 硬件产品创新**。
 
-## 四、运行方式
-<拉取工程后，如何编译、烧录/部署、运行的完整步骤；最好能让评委照着一步步复现>
+作品把神经 Codec、INT8 量化、ESP32-S3 PIE 向量内核、双核调度、USB/Wi-Fi Token 传输、480x320 板端显示和 PC Token 观察界面组合成完整闭环。
 
-## 五、AI Coding 使用说明
-<说明本作品如何借助 AI 辅助开发：
-- 在需求拆解 / 方案设计 / 编码 / 调试 / 文档等环节如何与 AI 协作；
-- AI 对开发效率或质量带来的实际帮助。
-完整对话日志见 logs/ 目录>
+## 三、主要实测结果
+
+- `1K`：2 秒测试音输出 120 Token、4 个分片；`4/4` 到达，`played=1/1`，播放完成 16.852 s。
+- `3K`：2 秒测试音输出 336 Token、756 B、4 个分片；`4/4` 到达，`played=1/1`，播放完成 15.506 s。
+- `6K`：2 秒测试音输出 668 Token、8 个分片；`8/8` 到达，`played=1/1`，播放完成 18.467 s。
+- 质量：板端真实中文样本 PESQ-WB 为 `1K=1.779`、`3K=2.181`、`6K=2.669`。
+- 稳定性：三档分别在两块板上各运行 50 轮，共 300 轮，无断言、无串口超时，同码率双板指纹一致。
+
+完整数据和原始日志说明见 `docs/验证报告/`。
+
+## 四、目录结构
+
+```text
+app/jixun-codec/                应用源码、三档权重和板端 UI
+board/esp32s3-box/              ESP32-S3-BOX 板级补丁与 openvela defconfig
+host/                           PC Token 中继、控制台、烧录和稳定性测试工具
+skills/jixuncodec-rate-guard/   自定义速率门禁 Skill
+deliverables/                   技术报告、演示视频等本地交付物（按团队要求不进入远程仓）
+docs/验证报告/                  三档码率、时延、质量和稳定性验证数据
+logs/                           AI Coding 日志目录（提交前由官方工具导出）
+scripts/                        构建和板级补丁应用脚本
 ```
 
-> 提示：将会根据「作品本身 + 你的 README 说明 + `logs/` 里的 AI Coding 日志」来理解和评估你的作品，README 写清楚很重要。
+## 五、构建前准备
 
----
+1. 使用组委会 manifest 拉取完整 openvela 工作区。
+2. 板级补丁已重放到比赛分支 `dev-ai-contest-2026` 的 NuttX 基线 `dd92bcf4`，并用 `git apply --check` 验证可干净应用。
+3. 应用板级补丁，并把本项目 defconfig 放入 ESP32-S3-BOX 配置目录：
 
-## 附：仓库命名规范
+```bash
+cd contest2026_501_jixunCodec
+./scripts/apply_board_patch.sh /path/to/openvela-workspace
+```
 
-`contest2026_<编号>_<队伍名>` — 编号三位零填充；队名 slug（全小写、英文/拼音、连字符）。例：`contest2026_501_jixunCodec`。
-（仓库由组委会统一创建，**每队仅一个仓**，无需自行命名。）
+脚本只修改 openvela 工作区内的 `nuttx` 目录；参赛仓本身结构不会被改动。
+
+## 六、编译
+
+推荐直接使用 openvela 统一入口，并通过环境变量选择模型：
+
+```bash
+cd /path/to/openvela-workspace
+JX_RATE=3k ./build.sh esp32s3-box:openvela distclean
+JX_RATE=3k ./build.sh esp32s3-box:openvela -j8
+```
+
+支持 `JX_RATE=1k|3k|6k`。如果当前工作区使用 Make 两遍构建流程，也可以执行：
+
+```bash
+./contest2026_501_jixunCodec/scripts/build_jixun.sh /path/to/openvela-workspace 3k 8
+```
+
+产物：`nuttx/nuttx.bin`。
+
+## 七、烧录
+
+两块板固定角色：`COM23` 发送，`COM4` 接收。只写应用区 `0x10000`：
+
+```bash
+python -m esptool --chip esp32s3 --port COM23 --baud 921600 \
+  --before default-reset --after hard-reset write-flash 0x10000 nuttx/nuttx.bin
+
+python -m esptool --chip esp32s3 --port COM4 --baud 921600 \
+  --before default-reset --after hard-reset write-flash 0x10000 nuttx/nuttx.bin
+```
+
+不要执行 `erase_flash`，不要覆盖 bootloader 和分区表。
+
+## 八、PC 控制台
+
+PC 侧位于 `host/`，需要 Python 3、`pyserial` 和 Windows 自带 Tk：
+
+```bat
+cd host
+python -m pip install -r requirements.txt
+SwitchCodec_1k.cmd
+SwitchCodec_3k.cmd
+SwitchCodec_6k.cmd
+```
+
+控制台负责选择码率、烧录对应固件、转发 Token 和展示分片/播放状态。PC 不参与 PCM 解码或播放。
+
+快速稳定性回归：
+
+```bat
+python _rate_stability_smoke.py --rates 1k 3k 6k --cycles 1 --restore 3k
+```
+
+## 九、板级改动说明
+
+`board/esp32s3-box/patches/nuttx-dev-ai-contest-2026-jixun.patch` 汇总了本作品在 NuttX 公共仓上的改动，包括：
+
+- ESP32-S3 PSRAM、Wi-Fi、I2S、摄像头和内存布局修复；
+- ST7796 LCD 初始化、SPI 片选保持和大块写屏修复；
+- LCD 与 GT911 触摸共享 GPIO48 复位脚，启动顺序改为先触摸、最后初始化 LCD，避免面板被二次复位后黑屏；
+- 板端 UI 自动启动和 SPI/显示资源隔离。
+
+`board/esp32s3-box/patches/esp-hal-3rdparty-jixun.patch` 补充 ESP HAL 的自旋锁初始化编译修复。mbedTLS 的自动化命名适配不在本仓携带，由 NuttX 构建流程按官方补丁重新生成。
+
+`configs/openvela/defconfig` 是当前可运行配置。其中的 API Key 字段已清空，提交仓不包含真实密钥。
+
+## 十、AI Coding 日志
+
+`logs/` 当前只保留官方格式说明，尚未放入真实会话日志。正式上传前必须在 openvela 工作区内运行组委会日志采集工具，完成会话导出和 `validate-log.py` 校验，再由人工确认后提交。
+
+## 十一、许可证
+
+本仓新增代码按 Apache License 2.0 提交；引入的上游组件继续遵循各自许可证。详见 `LICENSE` 和 `NOTICE`。
