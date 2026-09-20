@@ -9,8 +9,6 @@
   <include name="openvela.xml"/>
 
   <project path="contest2026_501_jixunCodec" name="contest2026_501_jixunCodec">
-    <linkfile src="app/hello_app" dest="packages/demos/contest2026_501_hello_app"/>
-    <linkfile src="quickapp/hello_quickapp" dest="packages/apps/contest2026_501_hello_quickapp"/>
-    <linkfile src="board/contest_board" dest="vendor/openvela/boards/contest2026_501_board"/>
+    <linkfile src="app/jixun-codec" dest="apps/jixun-codec"/>
   </project>
 </manifest>

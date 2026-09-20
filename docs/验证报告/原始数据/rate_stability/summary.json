@@ -1,0 +1,59 @@
+{
+  "1k": {
+    "cycles_requested": 1,
+    "cycles_completed": 1,
+    "passed": 1,
+    "failed": 0,
+    "records": [
+      {
+        "rate": "1k",
+        "cycle": 1,
+        "ok": true,
+        "rc": 0,
+        "timeout": false,
+        "elapsed_s": 17.106,
+        "token_frames": 4,
+        "relayed_groups": 4,
+        "played": 1
+      }
+    ]
+  },
+  "3k": {
+    "cycles_requested": 1,
+    "cycles_completed": 1,
+    "passed": 1,
+    "failed": 0,
+    "records": [
+      {
+        "rate": "3k",
+        "cycle": 1,
+        "ok": true,
+        "rc": 0,
+        "timeout": false,
+        "elapsed_s": 15.75,
+        "token_frames": 4,
+        "relayed_groups": 4,
+        "played": 1
+      }
+    ]
+  },
+  "6k": {
+    "cycles_requested": 1,
+    "cycles_completed": 1,
+    "passed": 1,
+    "failed": 0,
+    "records": [
+      {
+        "rate": "6k",
+        "cycle": 1,
+        "ok": true,
+        "rc": 0,
+        "timeout": false,
+        "elapsed_s": 18.71,
+        "token_frames": 8,
+        "relayed_groups": 4,
+        "played": 1
+      }
+    ]
+  }
+}
