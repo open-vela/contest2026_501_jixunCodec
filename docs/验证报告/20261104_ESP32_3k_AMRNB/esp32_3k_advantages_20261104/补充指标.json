@@ -1,0 +1,90 @@
+{
+  "origin": "${PROJECT_ROOT}/backups\\esp32_metrics_comparison_20261104_035832",
+  "all_codec_outputs_measured_on": "ESP32-S3 COM18",
+  "new_board_run": false,
+  "new_host_work": "Score previously exported ESP32 outputs against original 16k reference; no codec execution",
+  "method": "AI declared delay4118@16k; AMR fixed40@8k then scipy resample_poly(2,1), round/clampS16; DC removed; no gain fitting or per-case lag search. Upsampling AMR does not recover high frequencies.",
+  "rates": {
+    "AI_codec_bps": 3000.0,
+    "AMR_codec_bps": 4750,
+    "AI_payload_saving_fraction": 0.368421052631579,
+    "ideal_payload_duration_ratio_AI_over_AMR": 1.5833333333333333,
+    "payload_60s_AI_bytes": 22500.0,
+    "payload_60s_AMR_bytes": 35625.0,
+    "AMR_frame_stream_bps": 5200
+  },
+  "existing_measured_advantages": {
+    "fixed3s_SNR_gain_db": 1.4172318596696316,
+    "fixed3s_segmental_SNR_gain_db": 2.15362637314,
+    "fixed3s_SI_SDR_gain_db": 1.9146050022633911,
+    "human2s_STOI_AI_minus_AMR": -0.002013499649270223
+  },
+  "wideband_rows": [
+    {
+      "case": "fixed2s",
+      "AI_PESQ_WB": 1.930149793624878,
+      "AI_STOI_16k": 0.8524639880136645,
+      "AMR_PESQ_WB": 2.1438069343566895,
+      "AMR_STOI_16k": 0.8934538662745647
+    },
+    {
+      "case": "human2s",
+      "AI_PESQ_WB": 2.3606789112091064,
+      "AI_STOI_16k": 0.8981612775824428,
+      "AMR_PESQ_WB": 2.626389741897583,
+      "AMR_STOI_16k": 0.8988052072929569
+    },
+    {
+      "case": "fixed3s",
+      "AI_PESQ_WB": 2.2714602947235107,
+      "AI_STOI_16k": 0.8798232517637263,
+      "AMR_PESQ_WB": 2.1689207553863525,
+      "AMR_STOI_16k": 0.8877437263462433
+    }
+  ],
+  "wideband_means": {
+    "AI_PESQ_WB": 2.187429666519165,
+    "AI_STOI_16k": 0.8768161724532779,
+    "AMR_PESQ_WB": 2.3130391438802085,
+    "AMR_STOI_16k": 0.8933342666379216
+  },
+  "source_hashes": [
+    {
+      "path": "${PROJECT_ROOT}/backups\\esp32_metrics_comparison_20261104_035832\\inputs\\fixed2s_s16le_16k_mono.pcm",
+      "sha256": "6800be0a7057ea21908fd3f3e97ded9e77f58cc2e0234f7e6dd29f66be0e7fce"
+    },
+    {
+      "path": "${PROJECT_ROOT}/backups\\esp32_metrics_comparison_20261104_035832\\evidence\\COM18_history\\fixed2s_gap40_repeat\\COM18_out.pcm",
+      "sha256": "48455f8dfc2433313b71002fe46370cbc03fe5d8bb9708bca9539f104c12dc56"
+    },
+    {
+      "path": "${PROJECT_ROOT}/backups\\esp32_metrics_comparison_20261104_035832\\baseline_amr\\results\\fixed2s\\run01_out.pcm",
+      "sha256": "d98de7dc6dd491e06097a69428a94cac02bdc0fd37c3f65679ea68b948a81aff"
+    },
+    {
+      "path": "${PROJECT_ROOT}/backups\\esp32_metrics_comparison_20261104_035832\\inputs\\human2s_frozen_s16le_16k_mono.pcm",
+      "sha256": "049df00995678f21d0eae123cf6f479b49b0ab617a99d6f8ab73d9e7fbd0b827"
+    },
+    {
+      "path": "${PROJECT_ROOT}/backups\\esp32_metrics_comparison_20261104_035832\\evidence\\COM18_history\\real_mic2s_01\\COM18_out.pcm",
+      "sha256": "713b891cfe1270ce72af0ec67891e5927fad5cab75008d916c3186a818821ff0"
+    },
+    {
+      "path": "${PROJECT_ROOT}/backups\\esp32_metrics_comparison_20261104_035832\\baseline_amr\\results\\human2s\\run01_out.pcm",
+      "sha256": "675aa80772d091f0b3c62572f68bc33abf3ff8fb92ad85706e7387e2995dd043"
+    },
+    {
+      "path": "${PROJECT_ROOT}/backups\\esp32_metrics_comparison_20261104_035832\\inputs\\fixed3s_s16le_16k_mono.pcm",
+      "sha256": "e6adbcd98c255d377506c9df18ad5f17d9893bbcccbd2a07215eca9650be867c"
+    },
+    {
+      "path": "${PROJECT_ROOT}/backups\\esp32_metrics_comparison_20261104_035832\\evidence\\COM18_decoder\\fixed3s_output_float32.bin",
+      "sha256": "8135325142b3be65d5582f4370604bdc6a3d1fd120989baea8587d1776a98120"
+    },
+    {
+      "path": "${PROJECT_ROOT}/backups\\esp32_metrics_comparison_20261104_035832\\baseline_amr\\results\\fixed3s\\run01_out.pcm",
+      "sha256": "01507d92cf6b2c7bb1e3ee9f85ac83eb14d67e7ec6672bc470e2232b2538112a"
+    }
+  ],
+  "quality_dataset_limit": "3 short correlated clips, not sufficient for general superiority or subjective preference"
+}

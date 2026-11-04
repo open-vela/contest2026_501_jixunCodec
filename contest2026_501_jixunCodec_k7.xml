@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <!-- Optional fixed RK3576 target; leaves the ESP32 manifest unchanged. -->
+  <remote name="openvela" fetch="https://github.com/open-vela/"/>
+  <remote name="beaconcat" fetch="https://github.com/BeaconCat/"/>
+  <default remote="openvela" revision="dev-ai-contest-2026"/>
+  <project path="nuttx" name="nuttx" remote="beaconcat" revision="31a860ad27b10dfa69be929250c17cebe9454be9">
+    <linkfile src="tools/build.sh" dest="build.sh"/>
+  </project>
+  <project path="apps" name="nuttx-apps" revision="dcc6a95c3b323e533c98fde8fb209f99e24f0fdd"/>
+  <project path="external" name="external" remote="beaconcat" revision="a026f9bce802c04a26620feb0911b6eabb9fcb8f"/>
+  <project path="vendor" name="vendor" revision="306db14707f55b7dadaa59053443a22e1f17959b"/>
+  <project path="build" name="build" revision="305cea66a8efc749a958d8410f736e640c49496b"/>
+  <project path="contest2026_062_PharosTech" name="contest2026_062_PharosTech" revision="33edeb82c6bd6eb44b206d5299290a5ec3aac0f1">
+    <linkfile src="boards" dest="vendor/rockchip/boards"/>
+    <linkfile src="chips" dest="vendor/rockchip/chips"/>
+  </project>
+  <project path="contest2026_501_jixunCodec" name="contest2026_501_jixunCodec">
+    <linkfile src="app/jixun-k7" dest="apps/examples/jixun_k7"/>
+  </project>
+</manifest>

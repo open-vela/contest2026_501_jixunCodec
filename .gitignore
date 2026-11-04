@@ -25,3 +25,8 @@ Thumbs.db
 
 # Keep large local deliverables outside the submitted repository.
 deliverables/
+
+# K7 local validation output and dependency cache
+host/k7/artifacts/
+host/k7/deployment/
+.k7-cache/

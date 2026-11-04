@@ -1,0 +1,124 @@
+{
+  "date": "2026-11-04",
+  "base_commit": "c6c87266eb4112732cc550fa7c1277d651200c29",
+  "scope": "local repository preparation only",
+  "remote_write_performed": false,
+  "hardware_flashed": false,
+  "local_checks": [
+    {
+      "name": "materializer_tests",
+      "exit_code": 0,
+      "elapsed_s": 0.605
+    },
+    {
+      "name": "reference_patch_check",
+      "exit_code": 0,
+      "elapsed_s": 0.078
+    },
+    {
+      "name": "python_syntax",
+      "exit_code": 0
+    },
+    {
+      "name": "metrics_rebuild",
+      "exit_code": 0,
+      "elapsed_s": 3.565
+    },
+    {
+      "name": "metrics_numeric_reproduction",
+      "exit_code": 0,
+      "numeric_or_null_leaves_identical": 536
+    }
+  ],
+  "materializer_tests_after_lf_normalization": {
+    "tests": 3,
+    "status": "passed"
+  },
+  "git_index_source_manifest": {
+    "files": 91,
+    "all_hashes_match": true
+  },
+  "model_check": {
+    "scope": "decoder",
+    "compared_tensors": 139,
+    "compared_float32_values": 146941,
+    "selected_float32_bit_identical": true,
+    "whole_model_identical": false,
+    "other_scope_differences": [
+      {
+        "name": "encoder.blocks.0.conv_1.bias",
+        "kind": "shape",
+        "reference_shape": [
+          80
+        ],
+        "prepared_shape": [
+          32
+        ]
+      },
+      {
+        "name": "encoder.blocks.0.conv_1.weight",
+        "kind": "shape",
+        "reference_shape": [
+          80,
+          20,
+          1
+        ],
+        "prepared_shape": [
+          32,
+          20,
+          1
+        ]
+      },
+      {
+        "name": "encoder.blocks.0.conv_2.weight",
+        "kind": "shape",
+        "reference_shape": [
+          16,
+          81,
+          1
+        ],
+        "prepared_shape": [
+          16,
+          33,
+          1
+        ]
+      }
+    ],
+    "reference_sha256": "7abe6fae81b023e323d747dd091a1db9c50099409fcad0800d15b48b75bef3dd",
+    "prepared_adapter_sha256": "248e67a3205fa0589888b9d22fbac82be6e4ce1cfd6297f3e6386d0b433a63b1",
+    "limitation": "dequantized storage adapter only; runtime kernels not evaluated"
+  },
+  "reference_sdk_builds": {
+    "status": "passed",
+    "type": "incremental builds in isolated copy of existing reference SDK",
+    "clean_official_manifest_build": false,
+    "source_base": "fc3f07c0871f4bdaca0d19e48bd9d8b45fe2314b",
+    "native_preview_cases": 26,
+    "native_phase_assertions_per_case": 17,
+    "roles": [
+      {
+        "role": "tx",
+        "nuttx_bin_bytes": 3345056,
+        "nuttx_bin_sha256": "74ccd9dc6f9887f3df258b4417e4ec7a74079cbe2fda6678916a286777ef5d8e",
+        "compiler_warning_lines": 144,
+        "build_error_lines": 0,
+        "flashed": false
+      },
+      {
+        "role": "rx",
+        "nuttx_bin_bytes": 3345376,
+        "nuttx_bin_sha256": "51d11c5847322c28cabf18c728bdae02126b9cae84f2100897fb14decc307ac9",
+        "compiler_warning_lines": 144,
+        "build_error_lines": 0,
+        "flashed": false
+      }
+    ]
+  },
+  "pending": [
+    "Official manifest SDK rebase and clean builds",
+    "Hardware regression for newly compiled binaries",
+    "Export and validate current AI Coding session logs",
+    "Review existing compiler warnings",
+    "Submission identity/CLA and asset rights review before publishing"
+  ]
+}

@@ -1,0 +1,5 @@
+############################################################################
+# apps/jixun-codec/Make.defs  (batch1011: whole-segment impl, always built)
+############################################################################
+
+CONFIGURED_APPS += $(APPDIR)/jixun-codec

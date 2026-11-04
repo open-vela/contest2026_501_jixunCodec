@@ -1,0 +1,3902 @@
+diff --git a/arch/xtensa/src/common/xtensa_debug.c b/arch/xtensa/src/common/xtensa_debug.c
+index 0b0fd1920d1b892da344a756841b4924bebdfbb6..2455f8e9b44b6e7ad23d556886b09474ef78a554 100644
+--- a/arch/xtensa/src/common/xtensa_debug.c
++++ b/arch/xtensa/src/common/xtensa_debug.c
+@@ -547,7 +547,27 @@ uint32_t *xtensa_debug_handler(uint32_t *regs)
+     }
+   else
+     {
+-      _alert("Unhandled debug cause 0x%x\n", cause);
++      /* ===== JX SMP 诊断：打印出错 PC + 限流（临时，定位后可回退） ===== */
++      static volatile int jx_dbg_n = 0;
++      int jxn = jx_dbg_n;
++      uint32_t jx_pr;
++
++      __asm__ __volatile__("rsr %0, PRID" : "=r"(jx_pr));
++
++      if (jxn < 8)
++        {
++          jx_dbg_n = jxn + 1;
++          _alert("JXDBG[%d] cpu=%d prid=%08x cause=0x%x pc=%08x ps=%08x "
++                 "a0=%08x a1=%08x a2=%08x a3=%08x\n",
++                 jxn, up_cpu_index(), (unsigned)jx_pr, (unsigned)cause,
++                 (unsigned)regs[REG_PC], (unsigned)regs[REG_PS],
++                 (unsigned)regs[REG_A0], (unsigned)regs[REG_A1],
++                 (unsigned)regs[REG_A2], (unsigned)regs[REG_A3]);
++        }
++      else
++        {
++          _alert("Unhandled debug cause 0x%x\n", cause);
++        }
+     }
+ 
+   if (!irq)
+diff --git a/arch/xtensa/src/common/xtensa_initialstate.c b/arch/xtensa/src/common/xtensa_initialstate.c
+index 66e0dbfebeb1765a60cc2103112f15536eba4e15..f1b109967568fc4ea0c3627da779b939a8a08755 100644
+--- a/arch/xtensa/src/common/xtensa_initialstate.c
++++ b/arch/xtensa/src/common/xtensa_initialstate.c
+@@ -66,19 +66,30 @@ void up_initial_state(struct tcb_s *tcb)
+ 
+   if (tcb->pid == IDLE_PROCESS_ID)
+     {
+-      tcb->stack_alloc_ptr = g_idlestack;
+-      tcb->stack_base_ptr  = tcb->stack_alloc_ptr;
+-      tcb->adj_stack_size  = CONFIG_IDLETHREAD_STACKSIZE;
++      /* The stack of the IDLE task for CPUs 1..N is allocated by
++       * up_cpu_idlestack() before this function is called.  Keep it;
++       * falling back to the single static g_idlestack (which belongs to
++       * CPU0) would make the CPUs share one stack.  In that case, continue
++       * below so that the IDLE task also gets a valid initial register
++       * context.
++       */
++
++      if (tcb->stack_alloc_ptr == NULL)
++        {
++          tcb->stack_alloc_ptr = g_idlestack;
++          tcb->stack_base_ptr  = tcb->stack_alloc_ptr;
++          tcb->adj_stack_size  = CONFIG_IDLETHREAD_STACKSIZE;
+ 
+ #ifdef CONFIG_STACK_COLORATION
+-      /* If stack debug is enabled, then fill the stack with a
+-       * recognizable value that we can use later to test for high
+-       * water marks.
+-       */
++          /* If stack debug is enabled, then fill the stack with a
++           * recognizable value that we can use later to test for high
++           * water marks.
++           */
+ 
+-      xtensa_stack_color(tcb->stack_alloc_ptr, 0);
++          xtensa_stack_color(tcb->stack_alloc_ptr, 0);
+ #endif /* CONFIG_STACK_COLORATION */
+-      return;
++          return;
++        }
+     }
+ 
+   /* Initialize the context registers to stack top */
+diff --git a/arch/xtensa/src/esp32s3/Kconfig b/arch/xtensa/src/esp32s3/Kconfig
+index 1cf7c503bee24ae37661373ff851f3d38a9c7a71..c907b4dae26be20e6e159e31af01a1448d26c4ce 100644
+--- a/arch/xtensa/src/esp32s3/Kconfig
++++ b/arch/xtensa/src/esp32s3/Kconfig
+@@ -985,7 +985,6 @@ config ESP32S3_SPIRAM_SPEED_80M
+ 
+ config ESP32S3_SPIRAM_SPEED_120M
+ 	bool "120MHz clock speed"
+-	depends on ESP32S3_SPIRAM_MODE_QUAD
+ 
+ endchoice # ESP32S3_SPIRAM_SPEED
+ 
+diff --git a/arch/xtensa/src/esp32s3/Make.defs b/arch/xtensa/src/esp32s3/Make.defs
+index 4bf328a7c74a52e9a93aaa9870d63e9d0a630ec8..e72821aeaf17c9b4804f3572064af5ee70aa71c3 100644
+--- a/arch/xtensa/src/esp32s3/Make.defs
++++ b/arch/xtensa/src/esp32s3/Make.defs
+@@ -43,9 +43,7 @@ endif
+ 
+ # hal_i2s: direct I2S0 HAL bypassing NuttX I2S driver (voice AI module)
+ 
+-ifeq ($(CONFIG_PLANT_VOICE_AGENT),y)
+ CHIP_CSRCS += hal_i2s.c
+-endif
+ 
+ # Configuration-dependent ESP32-S3 files
+ 
+@@ -307,7 +305,7 @@ ifneq ($(USE_NXTMPDIR_ESP_REPO_DIRECTLY),y)
+ 	$(Q) git -C chip/$(ESP_HAL_3RDPARTY_REPO)/components/mbedtls/mbedtls reset --quiet --hard
+ endif
+ 	$(Q) echo "Applying patches..."
+-	$(Q) cd chip/$(ESP_HAL_3RDPARTY_REPO)/components/mbedtls/mbedtls && git apply ../../../nuttx/patches/components/mbedtls/mbedtls/*.patch
++	$(Q) cd chip/$(ESP_HAL_3RDPARTY_REPO)/components/mbedtls/mbedtls && git reset --quiet --hard HEAD && git apply ../../../nuttx/patches/components/mbedtls/mbedtls/*.patch
+ 	$(Q) cd chip/$(ESP_HAL_3RDPARTY_REPO)/components/esp_hw_support && git apply ../../../nuttx/patches/components/esp_hw_support/*.patch 2>/dev/null || true
+ endif
+ 
+diff --git a/arch/xtensa/src/esp32s3/esp32s3_allocateheap.c b/arch/xtensa/src/esp32s3/esp32s3_allocateheap.c
+index f37f8aac06447e28427c78d0bc2b68508486004b..3257dbfc31f52a3d64debfb617aac76f06c38274 100644
+--- a/arch/xtensa/src/esp32s3/esp32s3_allocateheap.c
++++ b/arch/xtensa/src/esp32s3/esp32s3_allocateheap.c
+@@ -73,6 +73,19 @@
+ 
+ #define ESP32S3_HEAP_TOP     0x3fced710
+ 
++/* JX: internal DRAM reserved at the top of the common heap for the Wi-Fi
++ * driver.  esp_wifi RX/TX buffers must live in internal RAM; without this
++ * carve-out the common heap hands those last bytes to ordinary malloc calls
++ * and esp_wifi ends up with ENOMEM.
++ */
++
++#ifndef JX_WIFI_IRAM_RESERVE
++#  define JX_WIFI_IRAM_RESERVE (48 * 1024)
++#endif
++
++uintptr_t g_jx_wifi_iram_base;
++size_t    g_jx_wifi_iram_size = JX_WIFI_IRAM_RESERVE;
++
+ #ifdef CONFIG_MM_KERNEL_HEAP
+ #  if defined(CONFIG_ESP32S3_SPIRAM)
+ #    define MM_USER_HEAP_EXTRAM
+@@ -139,7 +152,8 @@ void up_allocate_heap(void **heap_start, size_t *heap_size)
+    */
+ 
+   ubase = (uintptr_t)(_sheap) + XTENSA_IMEM_REGION_SIZE;
+-  utop  = ESP32S3_HEAP_TOP;
++  utop  = ESP32S3_HEAP_TOP - JX_WIFI_IRAM_RESERVE;
++  g_jx_wifi_iram_base = utop;
+ #endif /* CONFIG_MM_KERNEL_HEAP */
+ 
+   usize = utop - ubase;
+@@ -243,8 +257,12 @@ void xtensa_add_region(void)
+ 
+ #if defined(CONFIG_ESP32S3_SPIRAM_COMMON_HEAP) && !defined(MM_USER_HEAP_EXTRAM)
+   start = (void *)esp_spiram_allocable_vaddr_start();
+-  end = (void *)(esp_spiram_allocable_vaddr_end() -
+-                 esp_himem_reserved_area_size());
++
++  /* Top ESP32S3_PSRAM_STATIC_CARVE_SIZE bytes are kept out of the common
++   * heap (camera RX/shadow etc. via esp32s3_psram_static_alloc) so those
++   * buffers stop eating the internal DRAM that esp_wifi requires. */
++
++  end = (void *)esp32s3_psram_static_base();
+   size  = (size_t)(end - start);
+ #endif
+ 
+diff --git a/arch/xtensa/src/esp32s3/esp32s3_cam_dvp.c b/arch/xtensa/src/esp32s3/esp32s3_cam_dvp.c
+index aa16af7ab3a72611defd815d5bbeb2cbff1f2d73..e4cb248aed06f0cfe3d8ba25e7ad2b66c23f5adc 100644
+--- a/arch/xtensa/src/esp32s3/esp32s3_cam_dvp.c
++++ b/arch/xtensa/src/esp32s3/esp32s3_cam_dvp.c
+@@ -41,6 +41,14 @@
+ #include "esp32s3_gpio.h"
+ #include "esp32s3_dma.h"
+ #include "esp32s3_irq.h"
++#include "esp32s3_spiram.h"
++#include "hardware/esp32s3_soc.h"
++#include "rom/cache.h"
++
++/* 2026-09-09: ROM cache helper used by the I2S PSRAM DMA path; not
++ * declared in the esp32s3 rom/cache.h header. */
++
++extern int rom_Cache_WriteBack_Addr(uint32_t addr, uint32_t size);
+ #include "hardware/esp32s3_system.h"
+ #include "hardware/esp32s3_lcd_cam.h"
+ #include "hardware/esp32s3_dma.h"
+@@ -80,15 +88,20 @@
+  *  - GDMA EOF ISR re-arms the chain at every frame boundary (official
+  *    esp_cam_ctlr_dvp_start_trans() model) */
+ 
+-#define CAM_FRAME_W       160
+-#define CAM_FRAME_H       120
++/* 2026-09-10: 帧尺寸改为【运行时可选】：预览 160x120 / 拍照 640x480。
++ * DMA 链与两块 PSRAM 缓冲一律按最大帧分配；vs_eof_en=1 时 VSYNC 即帧
++ * 边界（EOF 提前结束本次搬运），所以链比当前帧长无害 —— DMA 根本用不
++ * 完就被 EOF 截断。切换模式只改 CPU 回读多少字节（g_frame_size）。 */
++
+ #define CAM_FRAME_BPP     2
+-#define CAM_FRAME_SIZE    (CAM_FRAME_W * CAM_FRAME_H * CAM_FRAME_BPP)
++#define CAM_MAX_W         640
++#define CAM_MAX_H         480
++#define CAM_MAX_SIZE      (CAM_MAX_W * CAM_MAX_H * CAM_FRAME_BPP)  /* 614400 */
+ 
+-#define CAM_LINE_BYTES    (CAM_FRAME_W * CAM_FRAME_BPP)  /* 320 */
+-#define CAM_RX_CHUNK      3840   /* 12 lines, line-aligned node */
+-#define CAM_RX_DESC_NUM   10     /* 10 nodes = 38400B = one frame */
+-#define CAM_RX_BUF_SIZE   (CAM_RX_CHUNK * CAM_RX_DESC_NUM)  /* 38400 */
++#define CAM_LINE_BYTES    (CAM_MAX_W * CAM_FRAME_BPP)  /* 1280 */
++#define CAM_RX_CHUNK      3840   /* 3 lines @640w / 12 lines @160w：都对齐 */
++#define CAM_RX_DESC_NUM   160    /* >= ceil(614400 / 4032) = 153 */
++#define CAM_RX_BUF_SIZE   CAM_MAX_SIZE
+ 
+ /* AEC/AGC/AWB 收敛预热帧数。
+  *
+@@ -124,13 +137,21 @@ struct esp32s3_cam_s
+ 
+ static struct esp32s3_cam_s g_cam;
+ 
+-/* Static DMA RX buffer (38400B, 64B aligned): allocated at link time so
+- * repeated capture does NOT eat the system heap.  Earlier versions did
+- * memalign(64, CAM_RX_BUF_SIZE) in init - after UI + s_cam_frame that
+- * pushed the heap over the edge -> malloc(38400) failed -> UI froze. */
++/* DMA RX + shadow 缓冲（各 38400B）2026-09-09 起改放 PSRAM 顶部保留区
++ * （esp32s3_psram_static_alloc），不再占用内部 DRAM：内部 DRAM 被 WiFi
++ * (esp_wifi 仅能内部分配) 与其它静态耗尽后会导致 ic_ebuf_alloc NULL /
++ * 数据帧发不出。DMA 链本身仍走内部描述符；rxbuf/shadow 数据在 PSRAM
++ * 经 GDMA 可直达（与 I2S 录音 PSRAM 路径一致），CPU 读回前做 cache
++ * 失效（cam_dvp_sync_rxbuf）。分配在 cam_dvp_dma_init() 一次性完成。 */
++
++static uint8_t *g_cam_rxbuf;
++static uint8_t *g_cam_shadow;
+ 
+-static uint8_t g_cam_rxbuf[CAM_RX_BUF_SIZE]
+-  __attribute__((aligned(64)));
++/* 预览流模式开关：esp32s3_cam_dvp_set_stream(true) 后 capture 走滚动快照 */
++
++static bool g_stream_mode = false;
++static bool g_stream_armed = false;
++static uint8_t *g_last_frame = NULL;   /* get_frame 返回帧：stream=shadow */
+ 
+ /* Software RGB565 byte swap, default ON.
+  *
+@@ -152,9 +173,33 @@ static bool g_cam_byte_swap = true;
+ 
+ static bool g_cam_quiet = false;
+ 
++/* 当前帧几何（运行时切换） */
++
++static uint32_t g_frame_w = 160;
++static uint32_t g_frame_h = 120;
++static uint32_t g_frame_size = 160 * 120 * CAM_FRAME_BPP;
++
+ #define CAM_LOG(...) \
+   do { if (!g_cam_quiet) printf(__VA_ARGS__); } while (0)
+ 
++/****************************************************************************
++ * Name: cam_dvp_sync_rxbuf
++ *
++ * Description:
++ *   PSRAM 上的 rxbuf 由 GDMA 直接写入（绕过 CPU cache）。DMA 完成一帧后、
++ *   CPU 读取前必须先作废该段 cache 行，否则 CPU 会读到旧缓存数据
++ *   （I2S 录音同款处理）。内部 SRAM 指针时跳过，行为与原先完全一致。
++ *
++ ****************************************************************************/
++
++static void cam_dvp_sync_rxbuf(void)
++{
++  if (esp32s3_ptr_extram(g_cam_rxbuf))
++    {
++      Cache_Invalidate_Addr((uint32_t)g_cam_rxbuf, g_frame_size);
++    }
++}
++
+ /****************************************************************************
+  * Private Functions
+  ****************************************************************************/
+@@ -381,9 +426,31 @@ static int cam_dvp_dma_init(void)
+ 
+   printf("[Cam-DVP] dma_channel=%d\n", priv->dma_channel);
+ 
+-  printf("[Cam-DVP] rxbuf=%p size=%u (static)\n",
++#ifdef CONFIG_ESP32S3_SPIRAM_COMMON_HEAP
++  g_cam_rxbuf = esp32s3_psram_static_alloc(CAM_RX_BUF_SIZE);
++  g_cam_shadow = esp32s3_psram_static_alloc(CAM_MAX_SIZE);
++#else
++  static uint8_t rxbuf_fallback[CAM_RX_BUF_SIZE]
++    __attribute__((aligned(64)));
++  static uint8_t shadow_fallback[160 * 120 * CAM_FRAME_BPP]
++    __attribute__((aligned(64)));
++
++  g_cam_rxbuf = rxbuf_fallback;
++  g_cam_shadow = shadow_fallback;
++#endif
++  if (g_cam_rxbuf == NULL || g_cam_shadow == NULL)
++    {
++      printf("[Cam-DVP] psram carve alloc FAILED\n");
++      return -ENOMEM;
++    }
++
++  printf("[Cam-DVP] rxbuf=%p size=%u (psram carve)\n",
+          g_cam_rxbuf, CAM_RX_BUF_SIZE);
+   memset(g_cam_rxbuf, 0, CAM_RX_BUF_SIZE);
++  if (esp32s3_ptr_extram(g_cam_rxbuf))
++    {
++      rom_Cache_WriteBack_Addr((uint32_t)g_cam_rxbuf, CAM_RX_BUF_SIZE);
++    }
+ 
+   printf("[Cam-DVP] dma_setup call (%u desc x %uB)...\n",
+          CAM_RX_DESC_NUM, CAM_RX_CHUNK);
+@@ -731,6 +798,7 @@ int esp32s3_cam_dvp_stop(void)
+ 
+   esp32s3_dma_disable(priv->dma_channel, false);
+   priv->started = false;
++  g_stream_armed = false;
+ 
+   lcdinfo("cam_dvp: capture stopped\n");
+ 
+@@ -756,11 +824,11 @@ int esp32s3_cam_dvp_stop(void)
+  *   6. re-arm — cam_dvp_arm() + re-enable both interrupts for next capture
+  *
+  * Input Parameters:
+- *   sink     - frame callback (called once with CAM_FRAME_SIZE bytes)
++ *   sink     - frame callback (called once with g_frame_size bytes)
+  *   sink_arg - opaque arg passed to sink
+  *   eoi_out  - set to true when the frame is delivered (may be NULL)
+  *
+- * Returned Value: CAM_FRAME_SIZE on success; negated errno on failure.
++ * Returned Value: g_frame_size on success; negated errno on failure.
+  ****************************************************************************/
+ 
+ int esp32s3_cam_dvp_capture(void (*sink)(const uint8_t *data, size_t len,
+@@ -782,53 +850,58 @@ int esp32s3_cam_dvp_capture(void (*sink)(const uint8_t *data, size_t len,
+     }
+ 
+   CAM_LOG("[Cam-DVP] capture enter (vs_eof=1): block_done=%u vsync=%u\n",
+-         priv->block_done, priv->vsync_count);
++          priv->block_done, priv->vsync_count);
+ 
+-  /* 0. 确保 DMA 在跑：上次 capture 末尾不 re-arm（rxbuf 保持稳定），
+-   *    所以本 capture 开头重新 arm + 使能中断，再走对齐/取帧。 */
++  /* 预热（仅首次）：AEC/AGC/AWB 需要几十帧收敛。DMA 必须滚动着跑，
++   * 预热期间 ISR 持续 re-arm，rxbuf 被反复覆盖（我们到抓帧才读）。
++   * 预热只在第一次 capture 发生 —— 连续预览复用已收敛状态。 */
+ 
+-  cam_dvp_arm();
+-  cam_dvp_enable_ints();
++  if (!priv->warmed_up)
++    {
++      cam_dvp_arm();
++      cam_dvp_enable_ints();
++      g_stream_armed = true;
+ 
+-  /* 1. Align: wait for the next EOF with the ISR active.  The ISR re-arms
+-   *    the chain at every frame boundary, so afterwards the DMA is
+-   *    capturing one full frame per VSYNC (the first window after any
+-   *    cam_dvp_arm() is partial and self-heals at its EOF). */
++      {
++        int w;
+ 
+-  seen = priv->block_done;
+-  stall = 0;
+-  while (priv->block_done == seen)
+-    {
+-      up_udelay(2000);
+-      stall++;
+-      if ((stall % 500) == 0)
+-        {
+-          CAM_LOG("[Cam-DVP] align wait... stall=%u\n", stall);
+-        }
++        for (w = 0; w < CAM_WARMUP_FRAMES; w++)
++          {
++            seen = priv->block_done;
++            stall = 0;
++            while (priv->block_done == seen)
++              {
++                up_udelay(2000);
++                stall++;
++                if (stall > 5000)
++                  {
++                    CAM_LOG("[Cam-DVP] warmup timeout\n");
++                    return -ETIMEDOUT;
++                  }
++              }
++          }
++      }
+ 
+-      if (stall > 5000)
+-        {
+-          CAM_LOG("[Cam-DVP] align timeout, no EOF\n");
+-          return -ETIMEDOUT;
+-        }
++      priv->warmed_up = true;
++      CAM_LOG("[Cam-DVP] warmup done (%d frames skipped, AEC/AWB converged)\n",
++              CAM_WARMUP_FRAMES);
+     }
+ 
+-  CAM_LOG("[Cam-DVP] aligned (block_done=%u)\n", priv->block_done);
++  /* 预览流模式：滚动采集 + 快照。等待下一次 EOF（帧刚完成），立即把
++   * rxbuf 复制进 shadow（并在 shadow 上做字节交换），DMA 不停止、ISR
++   * 继续 re-arm —— 下一次 capture 无需重新 arm/对齐，每帧只等一个帧周期；
++   * LCD 读 shadow 时 DMA 正在写 rxbuf，互不打扰、不撕裂。 */
+ 
+-  /* 1.5 Warm-up: AEC/AGC/AWB need tens of frames to converge (Zenn
+-   * "NuttX ESP32-S3 camera all-green" root cause).  Skip CAM_WARMUP_FRAMES
+-   * frames before grabbing; the cold frames are dark + green-tinted.
+-   * The ISR keeps re-arming the DMA during the warm-up, so the buffer is
+-   * continuously overwritten (we do not read it until the grab below).
+-   * Only the FIRST capture warms up — continuous preview reuses the
+-   * converged sensor state. */
+-
+-  if (!priv->warmed_up)
++  if (g_stream_mode)
+     {
+-      int w;
+-
+-      for (w = 0; w < CAM_WARMUP_FRAMES; w++)
++      if (!g_stream_armed)
+         {
++          cam_dvp_arm();
++          cam_dvp_enable_ints();
++          g_stream_armed = true;
++
++          /* arm 后的首个窗口是半帧：先消化一个 EOF，之后全是整帧 */
++
+           seen = priv->block_done;
+           stall = 0;
+           while (priv->block_done == seen)
+@@ -837,15 +910,78 @@ int esp32s3_cam_dvp_capture(void (*sink)(const uint8_t *data, size_t len,
+               stall++;
+               if (stall > 5000)
+                 {
+-                  CAM_LOG("[Cam-DVP] warmup timeout\n");
++                  CAM_LOG("[Cam-DVP] stream arm align timeout\n");
+                   return -ETIMEDOUT;
+                 }
+             }
+         }
+ 
+-      priv->warmed_up = true;
+-      CAM_LOG("[Cam-DVP] warmup done (%d frames skipped, AEC/AWB converged)\n",
+-             CAM_WARMUP_FRAMES);
++      seen = priv->block_done;
++      stall = 0;
++      while (priv->block_done == seen)
++        {
++          up_udelay(150);
++          stall++;
++          if ((stall % 2000) == 0)
++            {
++              CAM_LOG("[Cam-DVP] stream frame wait... stall=%u\n", stall);
++            }
++
++          if (stall > 80000)
++            {
++              CAM_LOG("[Cam-DVP] stream frame timeout\n");
++              return -ETIMEDOUT;
++            }
++        }
++
++      cam_dvp_sync_rxbuf();
++      memcpy(g_cam_shadow, g_cam_rxbuf, g_frame_size);
++      if (g_cam_byte_swap)
++        {
++          cam_swap_rgb565(g_cam_shadow, g_frame_size);
++        }
++
++      g_last_frame = g_cam_shadow;
++
++      if (eoi_out != NULL)
++        {
++          *eoi_out = true;
++        }
++
++      CAM_LOG("[Cam-DVP] stream frame done: %u bytes\n",
++              (unsigned)g_frame_size);
++      return (int)g_frame_size;
++    }
++
++  /* === 冻结模式（拍照/彩条/单帧）：抓完即停 DMA，保证帧稳定 === */
++
++  if (!g_stream_armed)
++    {
++      cam_dvp_arm();
++      cam_dvp_enable_ints();
++      g_stream_armed = true;
++
++      /* arm 后首个窗口是半帧：等它自愈的 EOF（对齐） */
++
++      seen = priv->block_done;
++      stall = 0;
++      while (priv->block_done == seen)
++        {
++          up_udelay(2000);
++          stall++;
++          if ((stall % 500) == 0)
++            {
++              CAM_LOG("[Cam-DVP] align wait... stall=%u\n", stall);
++            }
++
++          if (stall > 5000)
++            {
++              CAM_LOG("[Cam-DVP] align timeout, no EOF\n");
++              return -ETIMEDOUT;
++            }
++        }
++
++      CAM_LOG("[Cam-DVP] aligned (block_done=%u)\n", priv->block_done);
+     }
+ 
+   /* 2. Mask the GDMA EOF interrupt and clear any pending EOF, so no ISR
+@@ -891,6 +1027,7 @@ int esp32s3_cam_dvp_capture(void (*sink)(const uint8_t *data, size_t len,
+ 
+           cam_dvp_arm();
+           cam_dvp_enable_ints();
++          g_stream_armed = true;
+           return -ETIMEDOUT;
+         }
+     }
+@@ -901,6 +1038,11 @@ int esp32s3_cam_dvp_capture(void (*sink)(const uint8_t *data, size_t len,
+   /* 4. Freeze the DMA (it stopped at the EOF; belt & suspenders) */
+ 
+   esp32s3_dma_disable(priv->dma_channel, false);
++  g_stream_armed = false;
++
++  /* PSRAM 上 DMA 直写的帧：CPU 读前先作废 cache（内部 SRAM 时为空操作） */
++
++  cam_dvp_sync_rxbuf();
+ 
+   /* 5. Diagnostics on the RAW frame (before any swap):
+    *    [xxxx|yyyy r..g..b.. | r..g..b..] = pixel value as little-endian
+@@ -908,7 +1050,7 @@ int esp32s3_cam_dvp_capture(void (*sink)(const uint8_t *data, size_t len,
+    *    (CORRECT for OV3660), the second is what it shows WITH swap. */
+ 
+   CAM_LOG("[Cam-DVP] frame done: %u bytes (swap=%s)\n",
+-         (unsigned)CAM_FRAME_SIZE, g_cam_byte_swap ? "on" : "off");
++         (unsigned)g_frame_size, g_cam_byte_swap ? "on" : "off");
+ 
+   if (sink != NULL)
+     {
+@@ -933,12 +1075,20 @@ int esp32s3_cam_dvp_capture(void (*sink)(const uint8_t *data, size_t len,
+ 
+   if (g_cam_byte_swap)
+     {
+-      cam_swap_rgb565(g_cam_rxbuf, CAM_FRAME_SIZE);
++      cam_swap_rgb565(g_cam_rxbuf, g_frame_size);
+     }
+ 
++  /* get_frame() 必须指向【本次抓到的这一帧】。2026-09-10 修：这行原来被
++   * 误缩进在 g_cam_byte_swap 分支里 —— 一旦字节交换关掉（`plant cam swap`
++   * 或将来别处改默认），g_last_frame 会停留在上一次的值（很可能是预览用的
++   * shadow），调用方去 get_frame() 拿到的是【上一帧/另一块缓冲】：
++   * 去饱和改在 A 上、上传读的是 B，表现成"改了跟没改一样"。 */
++
++  g_last_frame = g_cam_rxbuf;
++
+   if (sink != NULL)
+     {
+-      sink(g_cam_rxbuf, CAM_FRAME_SIZE, sink_arg);
++      sink(g_cam_rxbuf, g_frame_size, sink_arg);
+     }
+ 
+   /* 6. 末尾【不再 re-arm】：DMA 停在帧边界，rxbuf 保持稳定。
+@@ -952,7 +1102,7 @@ int esp32s3_cam_dvp_capture(void (*sink)(const uint8_t *data, size_t len,
+     }
+ 
+   CAM_LOG("[Cam-DVP] capture done\n");
+-  return (int)CAM_FRAME_SIZE;
++  return (int)g_frame_size;
+ }
+ 
+ /****************************************************************************
+@@ -1116,13 +1266,63 @@ void esp32s3_cam_dvp_diag(void)
+  * Name: esp32s3_cam_dvp_get_frame
+  *
+  * Return the internal DMA RX buffer (static, CAM_RX_BUF_SIZE bytes).
+- * The latest captured frame lives in its first CAM_FRAME_SIZE bytes.
++ * The latest captured frame lives in its first g_frame_size bytes.
+  * Used by the UI to display the frame without a second buffer copy.
+  ****************************************************************************/
+ 
+ uint8_t *esp32s3_cam_dvp_get_frame(void)
+ {
+-  return g_cam_rxbuf;
++  return g_last_frame != NULL ? g_last_frame : g_cam_rxbuf;
++}
++
++/****************************************************************************
++ * Name: esp32s3_cam_dvp_set_framesize
++ *
++ * 运行时切换帧几何（预览 160x120 / 拍照 640x480）。
++ *
++ * DMA 链与 rxbuf/shadow 已按 CAM_MAX_SIZE 分配，且 vs_eof_en=1 让 VSYNC
++ * 成为帧边界（EOF 提前结束搬运），因此这里【不需要】重编 DMA 链 —— 只改
++ * CPU 回读长度与写回长度。调用方负责先把传感器切到同一分辨率（SCCB），
++ * 并在调用前确保 capture 已停止（无并发取帧）。
++ *
++ * ⚠️ 这里【不】清 warmed_up：两种模式用的是同一个传感器窗口
++ * （start/end 均为 0,0→2079,1547），只有输出缩放不同，场景平均亮度不变
++ * → AEC/AGC/AWB 依旧有效，无需重跑 40 帧预热（否则每次拍照、每次返回
++ * 预览都要多等约 9 秒）。切换后的时序稳定交给 freeze 路径自带的两个
++ * 帧周期对齐（见 capture 的 align + post-mask EOF 两步）。
++ *
++ * Input Parameters:
++ *   w, h - 目标像素尺寸（<= CAM_MAX_W / CAM_MAX_H）
++ *
++ * Returned Value: 0 成功；负 errno 失败
++ ****************************************************************************/
++
++int esp32s3_cam_dvp_set_framesize(uint32_t w, uint32_t h)
++{
++  if (w == 0 || h == 0 || w > CAM_MAX_W || h > CAM_MAX_H)
++    {
++      printf("[Cam-DVP] set_framesize %ux%u out of range (max %dx%d)\n",
++             (unsigned)w, (unsigned)h, CAM_MAX_W, CAM_MAX_H);
++      return -EINVAL;
++    }
++
++  g_frame_w = w;
++  g_frame_h = h;
++  g_frame_size = w * h * CAM_FRAME_BPP;
++
++  printf("[Cam-DVP] framesize -> %ux%u (%u bytes)\n",
++         (unsigned)w, (unsigned)h, (unsigned)g_frame_size);
++  return OK;
++}
++
++/****************************************************************************
++ * Name: esp32s3_cam_dvp_get_framesize
++ ****************************************************************************/
++
++void esp32s3_cam_dvp_get_framesize(uint32_t *w, uint32_t *h)
++{
++  if (w != NULL) *w = g_frame_w;
++  if (h != NULL) *h = g_frame_h;
+ }
+ 
+ /****************************************************************************
+@@ -1155,4 +1355,31 @@ void esp32s3_cam_dvp_set_quiet(bool quiet)
+   g_cam_quiet = quiet;
+ }
+ 
++
++/****************************************************************************
++ * Name: esp32s3_cam_dvp_set_stream / esp32s3_cam_dvp_get_stream
++ *
++ * 预览流模式开关。开启后 capture() 走"滚动快照"路径：DMA 连续采集，
++ * 帧完成即复制到 shadow（不冻结、不重新 arm），预览等待从约 2 个帧周期
++ * 降到约 1 个帧周期；LCD/UI 读 shadow 时 DMA 在写 rxbuf，互不打扰。
++ * 拍照/彩条等单帧路径保持关闭（冻结模式，帧稳定零拷贝）。
++ ****************************************************************************/
++
++void esp32s3_cam_dvp_set_stream(bool on)
++{
++  if (g_stream_mode == on)
++    {
++      return;
++    }
++
++  g_stream_mode = on;
++  g_stream_armed = false;
++  g_last_frame = on ? g_cam_shadow : g_cam_rxbuf;
++  printf("[Cam-DVP] stream mode %s\n", on ? "ON (rolling snapshot)" : "OFF");
++}
++
++bool esp32s3_cam_dvp_get_stream(void)
++{
++  return g_stream_mode;
++}
+ #endif /* CONFIG_ESP32S3_CAM_DVP */
+diff --git a/arch/xtensa/src/esp32s3/esp32s3_cam_dvp.h b/arch/xtensa/src/esp32s3/esp32s3_cam_dvp.h
+index 9c41c0b79760d4d8b10f6a24ecfc5d2cb22dc32c..73a41e4695f637076f5654fca0872a445a6f039f 100644
+--- a/arch/xtensa/src/esp32s3/esp32s3_cam_dvp.h
++++ b/arch/xtensa/src/esp32s3/esp32s3_cam_dvp.h
+@@ -55,6 +55,12 @@ void esp32s3_cam_dvp_diag(void);
+ 
+ uint8_t *esp32s3_cam_dvp_get_frame(void);
+ 
++/* 运行时切换帧几何（预览 160x120 / 拍照 640x480）。DMA 链与缓冲已按最大
++ * 帧分配，只需在 capture 停止时调用；切换后 AEC/AWB 会重跑预热。 */
++
++int esp32s3_cam_dvp_set_framesize(uint32_t w, uint32_t h);
++void esp32s3_cam_dvp_get_framesize(uint32_t *w, uint32_t *h);
++
+ /* Runtime toggle for the software RGB565 byte swap (default ON). */
+ 
+ void esp32s3_cam_dvp_set_swap(bool on);
+@@ -64,6 +70,11 @@ bool esp32s3_cam_dvp_get_swap(void);
+ 
+ void esp32s3_cam_dvp_set_quiet(bool quiet);
+ 
++/* 预览流模式（滚动快照）：capture 不冻结 DMA，每帧只等一个帧周期。 */
++
++void esp32s3_cam_dvp_set_stream(bool on);
++bool esp32s3_cam_dvp_get_stream(void);
++
+ #endif /* CONFIG_ESP32S3_CAM_DVP */
+ 
+-#endif /* __ARCH_XTENSA_SRC_ESP32S3_ESP32S3_CAM_DVP_H */
++#endif /* __ARCH_XTENSA_SRC_ESP32S3_ESP32S3_CAM_DVP_H */
+\ No newline at end of file
+diff --git a/arch/xtensa/src/esp32s3/esp32s3_cpustart.c b/arch/xtensa/src/esp32s3/esp32s3_cpustart.c
+index 63d0ec85cd438ef026ef0ec4ead7b1d7a7d9fc67..ee805b73de05fa5ea1f1aaa3a18eb475df4765a8 100644
+--- a/arch/xtensa/src/esp32s3/esp32s3_cpustart.c
++++ b/arch/xtensa/src/esp32s3/esp32s3_cpustart.c
+@@ -50,12 +50,18 @@
+ static volatile bool g_appcpu_started;
+ static volatile spinlock_t g_appcpu_interlock;
+ 
++
++
+ /****************************************************************************
+  * ROM function prototypes
+  ****************************************************************************/
+ 
+ extern void ets_set_appcpu_boot_addr(uint32_t start);
+ 
++/* Entry point of the IDLE task for CPUs 1..N (sched/init/nx_smpstart.c) */
++
++extern void nx_idle_trampoline(void);
++
+ /****************************************************************************
+  * Private Functions
+  ****************************************************************************/
+@@ -168,12 +174,15 @@ void xtensa_appcpu_start(void)
+   xtensa_set_cpenable(CONFIG_XTENSA_CP_INITSET);
+ #endif
+ 
+-  /* Then switch contexts. This instantiates the exception context of the
+-   * tcb at the head of the assigned task list.  In this case, this should
+-   * be the CPUs NULL task.
++  /* JX: The stock sequence instantiates the IDLE task context through
++   * xtensa_context_restore(), i.e. a SYS_restore_context syscall.  That does
++   * not work for the APP CPU here: the APP CPU was entered from ROM through a
++   * windowed call and the syscall just resumes after the exception, so control
++   * falls back into the ROM park loop.  Enter the CPU's IDLE task entry point
++   * directly instead.  This does not return.
+    */
+ 
+-  xtensa_context_restore();
++  nx_idle_trampoline();
+ }
+ 
+ /****************************************************************************
+@@ -210,6 +219,11 @@ int up_cpu_start(int cpu)
+   if (!g_appcpu_started)
+     {
+       uint32_t regval;
++      uint32_t jx_prid;
++
++      __asm__ __volatile__("rsr %0, PRID" : "=r"(jx_prid));
++      _alert("JXCPU0 prid=%08x fn=%08x\n", jx_prid,
++             (uint32_t)xtensa_appcpu_start);
+ 
+       /* Start CPU1 */
+ 
+@@ -235,6 +249,8 @@ int up_cpu_start(int cpu)
+        */
+ 
+       regval = getreg32(SYSTEM_CORE_1_CONTROL_0_REG);
++      _alert("JXCPU0 ctrl0=%08x rst_stall=%08x\n", regval,
++             getreg32(RTC_CNTL_RTC_SW_CPU_STALL_REG));
+       if ((regval & SYSTEM_CONTROL_CORE_1_CLKGATE_EN) == 0)
+         {
+           regval  = getreg32(RTC_CNTL_RTC_SW_CPU_STALL_REG);
+@@ -269,12 +285,16 @@ int up_cpu_start(int cpu)
+       /* Set the CPU1 start address */
+ 
+       ets_set_appcpu_boot_addr((uint32_t)xtensa_appcpu_start);
++      _alert("JXCPU0 setboot=%08x rb=%08x\n",
++             (uint32_t)xtensa_appcpu_start,
++             *(volatile uint32_t *)0x600c0004);
+ 
+       /* And wait until the APP CPU starts and releases the spinlock. */
+ 
+       spin_lock(&g_appcpu_interlock);
+ 
+       /* prev cpu boot done */
++      _alert("JXCPU0 appcpu_started=%d\n", (int)g_appcpu_started);
+ 
+       spin_unlock(&g_appcpu_interlock);
+       DEBUGASSERT(g_appcpu_started);
+diff --git a/arch/xtensa/src/esp32s3/esp32s3_i2s.c b/arch/xtensa/src/esp32s3/esp32s3_i2s.c
+index f4ef44838d25c8b3794b20d554fd1244c56016af..3ce9c16b5d51156408d3d594ae570bba63559723 100644
+--- a/arch/xtensa/src/esp32s3/esp32s3_i2s.c
++++ b/arch/xtensa/src/esp32s3/esp32s3_i2s.c
+@@ -2577,6 +2577,7 @@ static int i2s_txchannels(struct i2s_dev_s *dev, uint8_t channels)
+ static int i2s_rxchannels(struct i2s_dev_s *dev, uint8_t channels)
+ {
+   struct esp32s3_i2s_s *priv = (struct esp32s3_i2s_s *)dev;
++  uint32_t channels_mask;
+ 
+   if (priv->config->rx_en)
+     {
+@@ -2585,7 +2586,41 @@ static int i2s_rxchannels(struct i2s_dev_s *dev, uint8_t channels)
+           return -EINVAL;
+         }
+ 
++      i2s_rx_channel_stop(priv);
++
+       priv->channels = channels;
++
++      /* 2026-10-22: mirror i2s_txchannels().  The upstream RX version
++       * only stored priv->channels and never programmed RX_TDM_CTRL, so
++       * it stayed at TOT_CHAN_NUM=0 / CHAN_BITS=0xFFFF, which makes the
++       * RX serializer mis-frame the ES8311 data and read all zeroes. */
++
++      modifyreg32(I2S_RX_TDM_CTRL_REG(priv->config->port),
++                  I2S_RX_TDM_TOT_CHAN_NUM_M,
++                  FIELD_TO_VALUE(I2S_RX_TDM_TOT_CHAN_NUM, 1));
++
++      channels_mask = getreg32(I2S_RX_TDM_CTRL_REG(priv->config->port));
++      channels_mask &= 0xffff0000;
++
++      if (priv->channels == 1)
++        {
++          modifyreg32(I2S_RX_CONF_REG(priv->config->port),
++                      I2S_RX_MONO_M, I2S_RX_MONO);
++          channels_mask |= (1u << 0);   /* CHAN0_EN */
++        }
++      else
++        {
++          modifyreg32(I2S_RX_CONF_REG(priv->config->port),
++                      I2S_RX_MONO_M, 0);
++          channels_mask |= (1u << 0) | (1u << 1);   /* CHAN0|CHAN1 */
++        }
++
++      putreg32(channels_mask, I2S_RX_TDM_CTRL_REG(priv->config->port));
++
++      modifyreg32(I2S_RX_CONF_REG(priv->config->port), 0, I2S_RX_UPDATE);
++
++      i2s_rx_channel_start(priv);
++
+       return OK;
+     }
+ 
+@@ -3246,4 +3281,95 @@ err:
+   return NULL;
+ }
+ 
++
++/****************************************************************************
++ * Name: esp32s3_i2s_rx_abort
++ *
++ * Description:
++ *   Abort every in-flight and pending RX transfer on the given port and
++ *   restart the RX channel from a clean state.
++ *
++ *   背景（2026-10-13）：ES7210 作 I2C slave 偶发锁不住 MCLK/LRCK 时，RX
++ *   DMA 收不满一个 apb -> EOF 中断永不到达 -> 驱动 rx.act 里那个
++ *   container 永远挂着，后续 i2s_receive 排进 rx.pend 也永远不启动。
++ *   HAL 层预读链的在途计数因此停在深度值不归零，hal_i2s_read_slot 每次
++ *   都是 3 秒超时，重试多少次都一样（现场表现：提示音响完没反应）。
++ *   本函数把 rx.act / rx.pend 里的 container 全部以 -ECANCELED 交给正常
++ *   完成路径（worker -> 回调 -> 上层回收 apb 并把在途计数归零），再
++ *   stop/start 一次 RX 通道，让硬件回到干净状态。
++ *
++ * Input Parameters:
++ *   port - I2S port number (0/1)
++ *
++ * Returned Value:
++ *   None
++ *
++ ****************************************************************************/
++
++#ifdef I2S_HAVE_RX
++void esp32s3_i2s_rx_abort(int port)
++{
++  FAR struct esp32s3_i2s_s *priv;
++  struct esp32s3_buffer_s *bfcontainer;
++  irqstate_t flags;
++  int ret;
++
++  switch (port)
++    {
++#ifdef CONFIG_ESP32S3_I2S0
++      case ESP32S3_I2S0:
++        priv = &esp32s3_i2s0_priv;
++        break;
++#endif
++#ifdef CONFIG_ESP32S3_I2S1
++      case ESP32S3_I2S1:
++        priv = &esp32s3_i2s1_priv;
++        break;
++#endif
++      default:
++        return;
++    }
++
++  /* 1) 在途 / 待发 container 全部标记取消并搬进 done 队列 */
++
++  /* 2026-10-13 SMP race fix: the RX ISR / rx worker may touch
++   * rx.act / rx.pend on the other core. enter_critical_section()
++   * only masks local IRQs, so it cannot protect the queues on SMP.
++   * Use the driver spinlock and keep stop/start inside it. */
++  flags = spin_lock_irqsave(&priv->slock);
++
++  while (!sq_empty(&priv->rx.act))
++    {
++      bfcontainer = (struct esp32s3_buffer_s *)sq_remfirst(&priv->rx.act);
++      bfcontainer->result = -ECANCELED;
++      sq_addlast((sq_entry_t *)bfcontainer, &priv->rx.done);
++    }
++
++  while (!sq_empty(&priv->rx.pend))
++    {
++      bfcontainer = (struct esp32s3_buffer_s *)sq_remfirst(&priv->rx.pend);
++      bfcontainer->result = -ECANCELED;
++      sq_addlast((sq_entry_t *)bfcontainer, &priv->rx.done);
++    }
++
++  /* 2) 停 RX 通道（清 RX_START、停 DMA、关中断）再重启（DMA/RX 复位） */
++
++  i2s_rx_channel_stop(priv);
++  i2s_rx_channel_start(priv);
++
++  spin_unlock_irqrestore(&priv->slock, flags);
++
++  /* 3) 交给 RX worker 回收，回调以 result=-ECANCELED 通知上层 */
++
++  if (!sq_empty(&priv->rx.done) && work_available(&priv->rx.work))
++    {
++      ret = work_queue(HPWORK, &priv->rx.work, i2s_rx_worker, priv, 0);
++      if (ret != 0)
++        {
++          i2serr("ERROR: Failed to queue RX work: %d\n", ret);
++        }
++    }
++}
++#endif /* I2S_HAVE_RX */
++
+ #endif /* CONFIG_ESP32S3_I2S */
+diff --git a/arch/xtensa/src/esp32s3/esp32s3_lowputc.c b/arch/xtensa/src/esp32s3/esp32s3_lowputc.c
+index b8c7e264c20a6f7aa092827d3769658446289746..b78d3190ed16c68b3c480a01f82329d1a51bd0bd 100644
+--- a/arch/xtensa/src/esp32s3/esp32s3_lowputc.c
++++ b/arch/xtensa/src/esp32s3/esp32s3_lowputc.c
+@@ -1020,3 +1020,22 @@ void esp32s3_lowsetup(void)
+ 
+ #endif /* !CONFIG_SUPPRESS_UART_CONFIG */
+ }
++
++#ifdef CONFIG_ESP32S3_UART0
++/****************************************************************************
++ * Name: esp32s3_uart0_reclaim_pins
++ *
++ * Description:
++ *   2026-09-09 M2（土壤↔拍照引脚互斥）：把 IO42(TX)/IO40(RX) 从摄像头 DVP
++ *   输入态切回 UART0。摄像头初始化把这两脚配成 DVP 输入后，土壤 UART0
++ *   收发即失效；拍照退出（cam_dvp_stop + 传感器软复位后）调用本函数恢复
++ *   UART0。与 DVP 引脚配置互为 GPIO matrix 的 last-writer-wins。
++ *
++ ****************************************************************************/
++
++void esp32s3_uart0_reclaim_pins(void)
++{
++  esp32s3_lowputc_enable_sysclk(&g_uart0_config);
++  esp32s3_lowputc_config_pins(&g_uart0_config);
++}
++#endif /* CONFIG_ESP32S3_UART0 */
+diff --git a/arch/xtensa/src/esp32s3/esp32s3_lowputc.h b/arch/xtensa/src/esp32s3/esp32s3_lowputc.h
+index 8680dd09ddc312a9ec832442e65cce14ea71a42e..06f2951845b8ab4a0ae99d7a00e3a652fb2215de 100644
+--- a/arch/xtensa/src/esp32s3/esp32s3_lowputc.h
++++ b/arch/xtensa/src/esp32s3/esp32s3_lowputc.h
+@@ -490,4 +490,12 @@ void esp32s3_lowputc_restore_pins(const struct esp32s3_uart_s *priv);
+ 
+ void esp32s3_lowsetup(void);
+ 
++/* 2026-09-09 M2（土壤↔拍照引脚互斥）：摄像头(DVP Y9=IO40/VSYNC=IO42)与
++ * UART0(土壤 RS485 TX=42/RX=40)共用 GPIO。拍照退出后调用本函数把 IO42/40
++ * 从摄像头输入态重新路由回 UART0（等价 esp32s3_lowsetup 的引脚配置）。
++ * 与 esp32s3_cam_dvp 的引脚配置互为 last-writer-wins。 */
++#ifdef CONFIG_ESP32S3_UART0
++void esp32s3_uart0_reclaim_pins(void);
++#endif
++
+ #endif /* __ARCH_XTENSA_SRC_ESP32S3_ESP32S3_LOWPUTC_H */
+diff --git a/arch/xtensa/src/esp32s3/esp32s3_sdmmc.c b/arch/xtensa/src/esp32s3/esp32s3_sdmmc.c
+index 294a68e41dc87b258db0091a63c69a5c18949b9f..7b49296f3b92df85ccd7b39df647f878351e4748 100644
+--- a/arch/xtensa/src/esp32s3/esp32s3_sdmmc.c
++++ b/arch/xtensa/src/esp32s3/esp32s3_sdmmc.c
+@@ -52,6 +52,23 @@
+ #include "hardware/esp32s3_gpio_sigmap.h"
+ #include "hardware/esp32s3_soc.h"
+ 
++#if defined(CONFIG_ESP32S3_SDMMC_DMA) && defined(CONFIG_ESP32S3_SPIRAM)
++#include <stdio.h>
++
++/* SDMMC 的 IDMA 只能搬运 4 字节对齐的缓冲，而上层（FAT/bchdev/应用）
++ * 可能给出未对齐指针。这里统一判断，需要时用对齐 bounce 缓冲替代，
++ * 避免 esp32s3_dmasendsetup 里的 DEBUGASSERT 直接挂死整个系统。
++ */
++
++static unsigned int g_sd_bounce_log;
++
++static inline bool esp32s3_needs_bounce(const void *buf)
++{
++  return (buf == NULL) || !esp32s3_ptr_dma_capable(buf) ||
++         (((uintptr_t)buf & 3u) != 0);
++}
++#endif
++
+ #ifdef CONFIG_ESP32S3_SDMMC
+ 
+ /****************************************************************************
+@@ -1825,7 +1842,10 @@ static int esp32s3_recvsetup(struct sdio_dev_s *dev, uint8_t *buffer,
+   mcinfo("nbytes=%ld\n", (long) nbytes);
+ 
+   DEBUGASSERT(priv != NULL && buffer != NULL && nbytes > 0);
+-  DEBUGASSERT(((uint32_t)buffer & 3) == 0);
++  if (((uintptr_t)buffer & 3u) != 0)
++    {
++      return -EINVAL;   /* PIO path needs 4-byte alignment too */
++    }
+ 
+   /* Save the destination buffer information for use by the interrupt
+    * handler.
+@@ -1891,7 +1911,10 @@ static int esp32s3_sendsetup(struct sdio_dev_s *dev, const uint8_t *buffer,
+   mcinfo("nbytes=%ld\n", (long)nbytes);
+ 
+   DEBUGASSERT(priv != NULL && buffer != NULL && nbytes > 0);
+-  DEBUGASSERT(((uint32_t)buffer & 3) == 0);
++  if (((uintptr_t)buffer & 3u) != 0)
++    {
++      return -EINVAL;   /* PIO path needs 4-byte alignment too */
++    }
+ 
+   /* Save the source buffer information for use by the interrupt handler */
+ 
+@@ -1964,7 +1987,7 @@ static int esp32s3_cancel(struct sdio_dev_s *dev)
+   wd_cancel(&priv->waitwdog);
+ 
+ #if defined(CONFIG_ESP32S3_SDMMC_DMA) && defined(CONFIG_ESP32S3_SPIRAM)
+-  if (!esp32s3_ptr_dma_capable(priv->buffer) && priv->dma_buf)
++  if (esp32s3_needs_bounce(priv->buffer) && priv->dma_buf)
+     {
+       kmm_free(priv->dma_buf);
+       priv->dma_buf = NULL;
+@@ -2476,7 +2499,7 @@ out:
+   leave_critical_section(flags);
+ 
+ #if defined(CONFIG_ESP32S3_SDMMC_DMA) && defined(CONFIG_ESP32S3_SPIRAM)
+-  if (!esp32s3_ptr_dma_capable(priv->buffer) && priv->dma_buf)
++  if (esp32s3_needs_bounce(priv->buffer) && priv->dma_buf)
+     {
+       if (!priv->wrdir && wkupevent == SDIOWAIT_TRANSFERDONE)
+         {
+@@ -2574,8 +2597,16 @@ static int esp32s3_fill_dma_desc(struct esp32s3_dev_s *priv)
+   uint32_t buffer = (uint32_t)priv->buffer;
+ 
+ #ifdef CONFIG_ESP32S3_SPIRAM
+-  if (!esp32s3_ptr_dma_capable(priv->buffer))
++  if (esp32s3_needs_bounce(priv->buffer))
+     {
++      if (g_sd_bounce_log < 5)
++        {
++          g_sd_bounce_log++;
++          printf("[SD-DMA] bounce %s buf=%p len=%u caller=%p\n",
++                 priv->wrdir ? "wr" : "rd", priv->buffer,
++                 (unsigned)buflen, __builtin_return_address(0));
++        }
++
+       priv->dma_buf = kmm_memalign(16, buflen);
+       if (!priv->dma_buf)
+         {
+@@ -2679,7 +2710,12 @@ static int esp32s3_dmarecvsetup(struct sdio_dev_s *dev, uint8_t *buffer,
+ 
+   DEBUGASSERT(priv != NULL);
+ 
+-  DEBUGASSERT(buffer != NULL && buflen > 0 && ((uint32_t)buffer & 3) == 0);
++  if (buffer == NULL || buflen == 0)
++    {
++      ferr("ERROR: bad dma setup buffer=%p buflen=%u\n",
++           buffer, (unsigned)buflen);
++      return -EINVAL;
++    }
+ 
+   /* Save the destination buffer information for use by the interrupt
+    * handler.
+@@ -2751,7 +2787,12 @@ static int esp32s3_dmasendsetup(struct sdio_dev_s *dev,
+   DEBUGASSERT(priv != NULL);
+ 
+   mcinfo("buflen=%lu\n", (unsigned long)buflen);
+-  DEBUGASSERT(buffer != NULL && buflen > 0 && ((uint32_t)buffer & 3) == 0);
++  if (buffer == NULL || buflen == 0)
++    {
++      ferr("ERROR: bad dma setup buffer=%p buflen=%u\n",
++           buffer, (unsigned)buflen);
++      return -EINVAL;
++    }
+ 
+   /* Save the destination buffer information for use by the interrupt
+    * handler.
+diff --git a/arch/xtensa/src/esp32s3/esp32s3_spi.c b/arch/xtensa/src/esp32s3/esp32s3_spi.c
+index c465479e54e4e487af0107b38b5ca743c79cf22b..86fc1a189ca0728012534842e20c653286c707e8 100644
+--- a/arch/xtensa/src/esp32s3/esp32s3_spi.c
++++ b/arch/xtensa/src/esp32s3/esp32s3_spi.c
+@@ -561,7 +561,12 @@ static int esp32s3_spi_lock(struct spi_dev_s *dev, bool lock)
+ #ifdef CONFIG_ESP32S3_SPI_DMA
+ static int esp32s3_spi_sem_waitdone(struct esp32s3_spi_priv_s *priv)
+ {
+-  return nxsem_tickwait_uninterruptible(&priv->sem_isr, SEC2TICK(10));
++  /* 2026-10-29: DMA done IRQ can be lost after many attach/detach cycles.
++   * Waiting 10 s per transaction made a 32-packet burst look like a dead
++   * board (minutes of silence).  Use 300 ms so the caller can recover.
++   */
++
++  return nxsem_tickwait_uninterruptible(&priv->sem_isr, MSEC2TICK(300));
+ }
+ #endif
+ 
+@@ -963,14 +968,48 @@ static void esp32s3_spi_dma_exchange(struct esp32s3_spi_priv_s *priv,
+       esp32s3_spi_set_regbits(SPI_CMD_REG(priv->config->id),
+                               SPI_UPDATE_M);
+ 
+-      while ((getreg32(SPI_CMD_REG(priv->config->id)) & SPI_UPDATE_M) != 0)
+-        {
+-          ;
+-        }
++      /* 2026-10-30: UPDATE is self-clearing.  If the SPI clock domain
++       * wedges it never drops and this loop spins forever with the
++       * scheduler starved, which shows up as a whole-board hang (dead
++       * console, frozen LCD).  Bound it and report a transfer error. */
++      {
++        int upd_spin = 0;
++        while ((getreg32(SPI_CMD_REG(priv->config->id)) & SPI_UPDATE_M) != 0)
++          {
++            if (++upd_spin > 200000)
++              {
++                spierr("SPI%d UPDATE stuck, abort transfer\n",
++                       priv->config->id);
++                break;
++              }
++          }
++      }
+ 
+       esp32s3_spi_set_regbits(SPI_CMD_REG(priv->config->id), SPI_USR_M);
+ 
+-      esp32s3_spi_sem_waitdone(priv);
++      if (esp32s3_spi_sem_waitdone(priv) < 0)
++        {
++          /* Lost TRANS_DONE: clear pending, stop DMA, drop USR, reset both
++           * GDMA FIFOs.  Without this the SPI_USR bit stays set and every
++           * following ioctl(SPIIOC_TRANSFER) queues up forever.
++           */
++
++          esp32s3_spi_set_regbits(SPI_DMA_INT_CLR_REG(priv->config->id),
++                                  SPI_TRANS_DONE_INT_CLR_M);
++          esp32s3_spi_clr_regbits(SPI_DMA_CONF_REG(priv->config->id),
++                                  SPI_DMA_TX_ENA_M | SPI_DMA_RX_ENA_M);
++          esp32s3_spi_clr_regbits(SPI_USER_REG(priv->config->id),
++                                  SPI_USR_MOSI_M | SPI_USR_MISO_M);
++          SET_GDMA_CH_BITS(DMA_OUT_CONF0_CH0_REG, priv->dma_channel,
++                           DMA_OUT_RST_CH0);
++          CLR_GDMA_CH_BITS(DMA_OUT_CONF0_CH0_REG, priv->dma_channel,
++                           DMA_OUT_RST_CH0);
++          SET_GDMA_CH_BITS(DMA_IN_CONF0_CH0_REG, priv->dma_channel,
++                           DMA_IN_RST_CH0);
++          CLR_GDMA_CH_BITS(DMA_IN_CONF0_CH0_REG, priv->dma_channel,
++                           DMA_IN_RST_CH0);
++          spierr("SPI%d DMA timeout, recovered\n", priv->config->id);
++        }
+ 
+       bytes -= n;
+     }
+@@ -1017,10 +1056,19 @@ static uint32_t esp32s3_spi_poll_send(struct esp32s3_spi_priv_s *priv,
+ 
+   esp32s3_spi_set_regbits(SPI_CMD_REG(priv->config->id), SPI_UPDATE_M);
+ 
+-  while ((getreg32(SPI_CMD_REG(priv->config->id)) & SPI_UPDATE_M) != 0)
+-    {
+-      ;
+-    }
++  /* 2026-10-30: bounded UPDATE wait, see esp32s3_spi_dma_exchange. */
++  {
++    int upd_spin = 0;
++    while ((getreg32(SPI_CMD_REG(priv->config->id)) & SPI_UPDATE_M) != 0)
++      {
++        if (++upd_spin > 200000)
++          {
++            spierr("SPI%d UPDATE stuck, abort transfer\n",
++                   priv->config->id);
++            break;
++          }
++      }
++  }
+ 
+   esp32s3_spi_set_regbits(SPI_CMD_REG(priv->config->id), SPI_USR_M);
+ 
+@@ -1156,10 +1204,22 @@ static void esp32s3_spi_poll_exchange(struct esp32s3_spi_priv_s *priv,
+       esp32s3_spi_set_regbits(SPI_CMD_REG(priv->config->id),
+                               SPI_UPDATE_M);
+ 
+-      while ((getreg32(SPI_CMD_REG(priv->config->id)) & SPI_UPDATE_M) != 0)
+-        {
+-          ;
+-        }
++      /* 2026-10-30: UPDATE is self-clearing.  If the SPI clock domain
++       * wedges it never drops and this loop spins forever with the
++       * scheduler starved, which shows up as a whole-board hang (dead
++       * console, frozen LCD).  Bound it and report a transfer error. */
++      {
++        int upd_spin = 0;
++        while ((getreg32(SPI_CMD_REG(priv->config->id)) & SPI_UPDATE_M) != 0)
++          {
++            if (++upd_spin > 200000)
++              {
++                spierr("SPI%d UPDATE stuck, abort transfer\n",
++                       priv->config->id);
++                break;
++              }
++          }
++      }
+ 
+       esp32s3_spi_set_regbits(SPI_CMD_REG(priv->config->id), SPI_USR_M);
+ 
+diff --git a/arch/xtensa/src/esp32s3/esp32s3_spi_timing.c b/arch/xtensa/src/esp32s3/esp32s3_spi_timing.c
+index 280d19357a3fe285c2460970175aa5858e825a2a..78746b3e301c6dde7be62051ce741b92e2860534 100644
+--- a/arch/xtensa/src/esp32s3/esp32s3_spi_timing.c
++++ b/arch/xtensa/src/esp32s3/esp32s3_spi_timing.c
+@@ -73,6 +73,8 @@
+ #if defined(CONFIG_ESP32S3_SPIRAM_MODE_OCT)
+ #  if defined(CONFIG_ESP32S3_SPIRAM_SPEED_80M)
+ #    define ESP32S3_SPI_TIMING_PSRAM_CORE_CLK       160
++#  elif defined(CONFIG_ESP32S3_SPIRAM_SPEED_120M)
++#    define ESP32S3_SPI_TIMING_PSRAM_CORE_CLK       240
+ #  endif
+ #elif defined(ESP32S3_SPI_TIMING_PSRAM_STR_MODE)
+ #  if defined(CONFIG_ESP32S3_SPIRAM_SPEED_120M)
+diff --git a/arch/xtensa/src/esp32s3/esp32s3_spiflash.c b/arch/xtensa/src/esp32s3/esp32s3_spiflash.c
+index 9cea8bc3a92fb529e4d7c7676758492512f30612..4659b03a216c50a8c98da509f10cfcdd4f3f6e13 100644
+--- a/arch/xtensa/src/esp32s3/esp32s3_spiflash.c
++++ b/arch/xtensa/src/esp32s3/esp32s3_spiflash.c
+@@ -32,6 +32,7 @@
+ #include <sys/param.h>
+ #include <inttypes.h>
+ #include <errno.h>
++#include <stdlib.h>
+ 
+ #include <nuttx/arch.h>
+ #include <nuttx/init.h>
+@@ -821,10 +822,31 @@ static void spi_flash_restore_cache(void)
+  *
+  ****************************************************************************/
+ 
++static sem_t g_jx_op_gate[CONFIG_SMP_NCPUS];
++
+ static int spi_flash_op_block_task(int argc, char *argv[])
+ {
+   struct tcb_s *tcb = this_task();
+   int cpu = this_cpu();
++  int want = -1;
++
++  if (argv != NULL && argv[0] != NULL)
++    {
++      want = (int)strtol(argv[0], NULL, 10);
++    }
++
++  /* JX SMP fix (2026-09-13): kthread_create() makes this thread runnable
++   * immediately, so it can start on the *other* core before the creator
++   * has applied nxsched_set_affinity().  That used to trip the affinity
++   * assertion below at boot (panic in spiflash_op) in a completely
++   * layout-dependent way.  Wait here for the creator's gate, which is
++   * posted only after the affinity has been applied. */
++
++  if (want >= 0 && want < CONFIG_SMP_NCPUS)
++    {
++      nxsem_wait(&g_jx_op_gate[want]);
++      cpu = this_cpu();
++    }
+ 
+   for (; ; )
+     {
+@@ -894,7 +916,13 @@ static int spiflash_init_spi_flash_op_block_task(int cpu)
+   char arg1[32];
+   cpu_set_t cpuset;
+ 
+-  snprintf(arg1, sizeof(arg1), "%p", &cpu);
++  /* JX: hand over the plain CPU index and set up the start gate */
++  snprintf(arg1, sizeof(arg1), "%d", cpu);
++
++  if (cpu >= 0 && cpu < CONFIG_SMP_NCPUS)
++    {
++      nxsem_init(&g_jx_op_gate[cpu], 0, 0);
++    }
+   argv[0] = arg1;
+   argv[1] = NULL;
+ 
+@@ -910,6 +938,11 @@ static int spiflash_init_spi_flash_op_block_task(int cpu)
+           CPU_ZERO(&cpuset);
+           CPU_SET(cpu, &cpuset);
+           ret = nxsched_set_affinity(pid, sizeof(cpuset), &cpuset);
++
++          /* Release the start gate only now: the affinity is in place. */
++
++          nxsem_post(&g_jx_op_gate[cpu]);
++
+           if (ret < 0)
+             {
+               return ret;
+diff --git a/arch/xtensa/src/esp32s3/esp32s3_spiram.c b/arch/xtensa/src/esp32s3/esp32s3_spiram.c
+index db07eb419bde0ffc52517aad9aee5716581d38d5..2f6b9cb017ea9e20b381761d43cc038afec45e9e 100644
+--- a/arch/xtensa/src/esp32s3/esp32s3_spiram.c
++++ b/arch/xtensa/src/esp32s3/esp32s3_spiram.c
+@@ -40,6 +40,7 @@
+ #include "esp_attr.h"
+ #include "esp32s3_psram.h"
+ #include "esp32s3_spiram.h"
++#include "esp32s3_himem.h"
+ #include "hardware/esp32s3_soc.h"
+ #include "hardware/esp32s3_cache_memory.h"
+ #include "hardware/esp32s3_iomux.h"
+@@ -153,28 +154,53 @@ extern int cache_invalidate_addr(uint32_t addr, uint32_t size);
+  *
+  ****************************************************************************/
+ 
+-static inline uint32_t mmu_valid_space(uint32_t *start_address)
++static inline uint32_t mmu_valid_space(uint32_t *start_address,
++                                       uint32_t need_pages)
+ {
+-  /* Look for an invalid entry for the MMU table from the end of the it
+-   * towards the beginning. This is done to make sure we have a room for
+-   * mapping the the SPIRAM
++  /* Look for the highest hole in the MMU table that is large enough for
++   * the SPIRAM.
++   *
++   * The historical implementation walked the table backwards and stopped
++   * at the first mapped entry, assuming that everything above it was
++   * free.  Some bootloaders leave a mapping behind at the very top of the
++   * DROM window (observed: entry 511 -> vaddr 0x3dff0000), in which case
++   * that assumption collapses the hole to zero bytes and the whole SPIRAM
++   * region is silently dropped from the heap.
+    */
+ 
++  int top = -1;
++
+   for (int i = (FLASH_MMU_TABLE_SIZE - 1); i >= 0; i--)
+     {
+-      if (FLASH_MMU_TABLE[i] & MMU_INVALID)
++      if ((FLASH_MMU_TABLE[i] & MMU_INVALID) == 0)
+         {
++          top = -1;                         /* mapped: hole is broken */
+           continue;
+         }
+ 
+-      /* Add 1 to i to identify the first MMU table entry not set found
+-       * backwards.
+-       */
++      if (top < 0)
++        {
++          top = i;
++        }
+ 
+-      i++;
++      if ((uint32_t)(top - i + 1) >= need_pages)
++        {
++          *start_address = DRAM0_CACHE_ADDRESS_LOW + i * MMU_PAGE_SIZE;
++          return ((uint32_t)(top - i + 1)) * MMU_PAGE_SIZE;
++        }
++    }
++
++  /* Nothing is large enough: fall back to the historic answer. */
++
++  for (int i = (FLASH_MMU_TABLE_SIZE - 1); i >= 0; i--)
++    {
++      if ((FLASH_MMU_TABLE[i] & MMU_INVALID) == 0)
++        {
++          i++;
+ 
+-      *start_address = DRAM0_CACHE_ADDRESS_LOW + (i) * MMU_PAGE_SIZE;
+-      return (FLASH_MMU_TABLE_SIZE - i) * MMU_PAGE_SIZE;
++          *start_address = DRAM0_CACHE_ADDRESS_LOW + (i) * MMU_PAGE_SIZE;
++          return (FLASH_MMU_TABLE_SIZE - i) * MMU_PAGE_SIZE;
++        }
+     }
+ 
+   return 0;
+@@ -402,7 +428,8 @@ void IRAM_ATTR esp_spiram_init_cache(void)
+     }
+ 
+   minfo("PSRAM available size = %d\n", psram_size);
+-  mapped_vaddr_size = mmu_valid_space(&g_mapped_vaddr_start);
++  mapped_vaddr_size = mmu_valid_space(&g_mapped_vaddr_start,
++                                      (uint32_t)(psram_size / MMU_PAGE_SIZE));
+ 
+   if ((SPIRAM_VADDR_OFFSET + SPIRAM_VADDR_MAP_SIZE) > 0)
+     {
+@@ -723,4 +750,62 @@ uint32_t esp_spiram_allocable_vaddr_end(void)
+   return g_allocable_vaddr_end;
+ }
+ 
++/****************************************************************************
++ * Name: esp32s3_psram_static_base
++ *
++ * Description:
++ *   Base address of the PSRAM static carve (top ESP32S3_PSRAM_STATIC_CARVE_SIZE
++ *   bytes of the mapped PSRAM, below any himem bank-switch reservation).
++ *
++ ****************************************************************************/
++
++uint32_t esp32s3_psram_static_base(void)
++{
++  return esp_spiram_allocable_vaddr_end() -
++         esp_himem_reserved_area_size() -
++         ESP32S3_PSRAM_STATIC_CARVE_SIZE;
++}
++
++/****************************************************************************
++ * Name: esp32s3_psram_static_alloc
++ *
++ * Description:
++ *   Deterministic PSRAM allocation from the static carve (bump allocator,
++ *   64B aligned, never freed).  Used by drivers whose buffers must not eat
++ *   the internal DRAM that esp_wifi depends on (camera RX/shadow ...).
++ *
++ ****************************************************************************/
++
++void *esp32s3_psram_static_alloc(size_t size)
++{
++  static uintptr_t s_offset;
++  uintptr_t base;
++  uintptr_t start;
++
++  if (size == 0)
++    {
++      return NULL;
++    }
++
++  size = (size + 63) & ~(size_t)63;
++
++  base = esp32s3_psram_static_base();
++  if (base == 0 || base < esp_spiram_allocable_vaddr_start())
++    {
++      return NULL;
++    }
++
++  if (s_offset + size > ESP32S3_PSRAM_STATIC_CARVE_SIZE)
++    {
++      return NULL;
++    }
++
++  start = base + s_offset;
++  s_offset += size;
++
++  memset((void *)start, 0, size);
++
++  return (void *)start;
++}
++
+ #endif
+diff --git a/arch/xtensa/src/esp32s3/esp32s3_spiram.h b/arch/xtensa/src/esp32s3/esp32s3_spiram.h
+index 6bd24ec7ccbd3cc5c1c1098627050365dfa84260..0ae6d699248e393a3d3e5598aba7b9ada4a9eaf8 100644
+--- a/arch/xtensa/src/esp32s3/esp32s3_spiram.h
++++ b/arch/xtensa/src/esp32s3/esp32s3_spiram.h
+@@ -215,6 +215,24 @@ uint32_t esp_spiram_allocable_vaddr_start(void);
+ 
+ uint32_t esp_spiram_allocable_vaddr_end(void);
+ 
++/* PSRAM top carve: 128KB reserved out of the common heap so static-ish
++ * buffers (camera RX/shadow, later voice) can live in PSRAM deterministically
++ * and stop occupying the scarce internal DRAM that esp_wifi requires.
++ * Kept out of the umm region (see xtensa_add_region in
++ * esp32s3_allocateheap.c).  64B aligned bump allocator, no free. */
++
++/* 2026-09-13 第十二轮：极讯 codec 只用语音+WiFi，相机不用。
++ * 原本在 PSRAM 顶部划走 2MB 给相机 RX/shadow（唯一使用者是
++ * esp32s3_cam_dvp.c），并回公共堆后：堆 6.36MB -> 8.36MB。
++ * 并行编近解码需 ~6.9MB，不并回就会 malloc 失败 -> 空指针写崩溃。
++ * 需要相机时把下面改回 0x200000 即可（或 -DESP32S3_PSRAM_STATIC_CARVE_SIZE=0x200000）。 */
++#ifndef ESP32S3_PSRAM_STATIC_CARVE_SIZE
++#  define ESP32S3_PSRAM_STATIC_CARVE_SIZE 0x0
++#endif
++
++uint32_t esp32s3_psram_static_base(void);
++void *esp32s3_psram_static_alloc(size_t size);
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/arch/xtensa/src/esp32s3/esp32s3_wifi_adapter.c b/arch/xtensa/src/esp32s3/esp32s3_wifi_adapter.c
+index 165f3ee25d8a4815ba181bcd4c3a8f2012d10af2..c75407a1da2c51c432eb8d0fb4f9193b10047177 100644
+--- a/arch/xtensa/src/esp32s3/esp32s3_wifi_adapter.c
++++ b/arch/xtensa/src/esp32s3/esp32s3_wifi_adapter.c
+@@ -41,6 +41,7 @@
+ #include <sys/stat.h>
+ #include <irq/irq.h>
+ #include <nuttx/kmalloc.h>
++#include <nuttx/mm/mm.h>
+ #include <nuttx/mqueue.h>
+ #include <nuttx/spinlock.h>
+ #include <nuttx/semaphore.h>
+@@ -400,6 +401,7 @@ static bool g_softap_started;
+ /* Wi-Fi SoftAP TX done callback function */
+ 
+ static wifi_txdone_cb_t g_softap_txdone_cb;
++static wifi_rxcb_t g_softap_rxcb;
+ 
+ /* Wi-Fi interface configuration */
+ 
+@@ -566,6 +568,20 @@ wifi_osi_funcs_t g_wifi_osi_funcs =
+   ._magic = ESP_WIFI_OS_ADAPTER_MAGIC,
+ };
+ 
++#define JX_WIFI_SMALL_POOL_COUNT 6
++
++/* JX: dedicated internal-RAM heap owned by the Wi-Fi driver
++ * (initialized in esp32s3_extraheaps.c).
++ */
++
++FAR struct mm_heap_s *g_jx_wifi_iram_heap;
++extern uintptr_t g_jx_wifi_iram_base;
++extern size_t    g_jx_wifi_iram_size;
++#define JX_WIFI_SMALL_POOL_SIZE  64
++
++static uint8_t g_wifi_small_pool[JX_WIFI_SMALL_POOL_COUNT][JX_WIFI_SMALL_POOL_SIZE];
++static uint8_t g_wifi_small_pool_used[JX_WIFI_SMALL_POOL_COUNT];
++
+ /* Wi-Fi TAG string data */
+ 
+ ESP_EVENT_DEFINE_BASE(WIFI_EVENT);
+@@ -2003,6 +2019,23 @@ static void *esp_malloc(uint32_t size)
+ 
+ static void esp_free(void *ptr)
+ {
++  int i;
++
++  for (i = 0; i < JX_WIFI_SMALL_POOL_COUNT; i++)
++    {
++      if (ptr == g_wifi_small_pool[i])
++        {
++          g_wifi_small_pool_used[i] = 0;
++          return;
++        }
++    }
++
++  if (g_jx_wifi_iram_heap != NULL && mm_heapmember(g_jx_wifi_iram_heap, ptr))
++    {
++      mm_free(g_jx_wifi_iram_heap, ptr);
++      return;
++    }
++
+ #ifdef CONFIG_XTENSA_IMEM_USE_SEPARATE_HEAP
+   if (xtensa_imm_heapmember(ptr))
+     {
+@@ -2182,7 +2215,12 @@ static void esp_evt_work_cb(void *arg)
+             break;
+ 
+           case WIFI_ADPT_EVT_STA_DISCONNECT:
+-            wlinfo("Wi-Fi sta disconnect\n");
++            /* JX 2026-09-14: 带上断开原因码，认证失败/密码错/AP 拒绝一目了然。 */
++            {
++              uint16_t jx_reason = (uint16_t)(evt_adpt->buf[39] |
++                                              (evt_adpt->buf[40] << 8));
++              wlinfo("Wi-Fi sta disconnect, reason=%u\n", (unsigned)jx_reason);
++            }
+             g_sta_connected = false;
+             ret = esp32s3_wlan_sta_set_linkstatus(false);
+             if (ret < 0)
+@@ -2209,6 +2247,11 @@ static void esp_evt_work_cb(void *arg)
+ #ifdef ESP32S3_WLAN_HAS_SOFTAP
+           case WIFI_ADPT_EVT_AP_START:
+             wlinfo("INFO: Wi-Fi softap start\n");
++            ret = esp32s3_wlan_softap_set_linkstatus(true);
++            if (ret < 0)
++              {
++                wlerr("ERROR: Failed to set SoftAP link status\n");
++              }
+ 
+ #ifdef CONFIG_ESP32S3_BLE
+             if (esp32s3_bt_controller_get_status() !=
+@@ -2241,6 +2284,11 @@ static void esp_evt_work_cb(void *arg)
+ 
+           case WIFI_ADPT_EVT_AP_STOP:
+             wlinfo("INFO: Wi-Fi softap stop\n");
++            ret = esp32s3_wlan_softap_set_linkstatus(false);
++            if (ret < 0)
++              {
++                wlerr("ERROR: Failed to clear SoftAP link status\n");
++              }
+             break;
+ 
+           case WIFI_ADPT_EVT_AP_STACONNECTED:
+@@ -3358,8 +3406,18 @@ static void *esp_malloc_internal(size_t size)
+ #elif defined(CONFIG_XTENSA_IMEM_USE_SEPARATE_HEAP)
+   return xtensa_imm_malloc(size);
+ #else
+-  void *ptr = kmm_malloc(size);
++  void *ptr = NULL;
++
++  if (g_jx_wifi_iram_heap != NULL)
++    {
++      ptr = mm_malloc(g_jx_wifi_iram_heap, size);
++      if (ptr != NULL)
++        {
++          return ptr;
++        }
++    }
+ 
++  ptr = kmm_malloc(size);
+   if (ptr != NULL)
+     {
+       if (esp32s3_ptr_extram(ptr))
+@@ -3400,10 +3458,15 @@ static void *esp_realloc_internal(void *ptr, size_t size)
+   size_t old_size = 0;
+   if (size == 0)
+     {
+-      kmm_free(ptr);
++      esp_free(ptr);
+       return NULL;
+     }
+ 
++  if (g_jx_wifi_iram_heap != NULL && mm_heapmember(g_jx_wifi_iram_heap, ptr))
++    {
++      return mm_realloc(g_jx_wifi_iram_heap, ptr, size);
++    }
++
+   new_ptr = kmm_malloc(size);
+   if (new_ptr != NULL)
+     {
+@@ -3446,7 +3509,18 @@ static void *esp_calloc_internal(size_t n, size_t size)
+ #elif defined(CONFIG_XTENSA_IMEM_USE_SEPARATE_HEAP)
+   return xtensa_imm_calloc(n, size);
+ #else
+-  void *ptr = kmm_calloc(n, size);
++  void *ptr = NULL;
++
++  if (g_jx_wifi_iram_heap != NULL)
++    {
++      ptr = mm_calloc(g_jx_wifi_iram_heap, n, size);
++      if (ptr != NULL)
++        {
++          return ptr;
++        }
++    }
++
++  ptr = kmm_calloc(n, size);
+   if (ptr != NULL)
+     {
+       if (esp32s3_ptr_extram(ptr))
+@@ -3481,7 +3555,18 @@ static void *esp_zalloc_internal(size_t size)
+ #elif defined(CONFIG_XTENSA_IMEM_USE_SEPARATE_HEAP)
+   return xtensa_imm_zalloc(size);
+ #else
+-  void *ptr = kmm_zalloc(size);
++  void *ptr = NULL;
++
++  if (g_jx_wifi_iram_heap != NULL)
++    {
++      ptr = mm_zalloc(g_jx_wifi_iram_heap, size);
++      if (ptr != NULL)
++        {
++          return ptr;
++        }
++    }
++
++  ptr = kmm_zalloc(size);
+   if (ptr != NULL)
+     {
+       if (esp32s3_ptr_extram(ptr))
+@@ -3509,9 +3594,48 @@ static void *esp_zalloc_internal(size_t size)
+  *
+  ****************************************************************************/
+ 
++
++static void *esp_wifi_small_pool_alloc(size_t size)
++{
++  int i;
++
++  if (size > JX_WIFI_SMALL_POOL_SIZE)
++    {
++      return NULL;
++    }
++
++  for (i = 0; i < JX_WIFI_SMALL_POOL_COUNT; i++)
++    {
++      if (!g_wifi_small_pool_used[i])
++        {
++          g_wifi_small_pool_used[i] = 1;
++          memset(g_wifi_small_pool[i], 0, size);
++          return g_wifi_small_pool[i];
++        }
++    }
++
++  return NULL;
++}
++
+ static void *esp_wifi_malloc(size_t size)
+ {
+-  return kmm_malloc(size);
++  void *ptr = esp_malloc_internal(size);
++
++  /* Keep firmware traffic in internal RAM, but allow small
++   * software objects such as timer handles to survive internal
++   * fragmentation by falling back to external RAM.
++   */
++
++  if (ptr == NULL && size <= 256)
++    {
++      ptr = kmm_malloc(size);
++      if (ptr == NULL)
++        {
++          ptr = esp_wifi_small_pool_alloc(size);
++        }
++    }
++
++  return ptr;
+ }
+ 
+ /****************************************************************************
+@@ -3531,7 +3655,7 @@ static void *esp_wifi_malloc(size_t size)
+ 
+ static void *esp_wifi_realloc(void *ptr, size_t size)
+ {
+-  return kmm_realloc(ptr, size);
++  return esp_realloc_internal(ptr, size);   /* JX-FIX: 只内部 RAM */
+ }
+ 
+ /****************************************************************************
+@@ -3551,7 +3675,7 @@ static void *esp_wifi_realloc(void *ptr, size_t size)
+ 
+ static void *esp_wifi_calloc(size_t n, size_t size)
+ {
+-  return kmm_calloc(n, size);
++  return esp_calloc_internal(n, size);      /* JX-FIX: 只内部 RAM */
+ }
+ 
+ /****************************************************************************
+@@ -3570,7 +3694,7 @@ static void *esp_wifi_calloc(size_t n, size_t size)
+ 
+ static void *esp_wifi_zalloc(size_t size)
+ {
+-  return kmm_zalloc(size);
++  return esp_zalloc_internal(size);         /* JX-FIX: 只内部 RAM */
+ }
+ 
+ /****************************************************************************
+@@ -4626,6 +4750,13 @@ int esp_wifi_notify_subscribe(pid_t pid, struct sigevent *event)
+ 
+ int esp_wifi_adapter_init(void)
+ {
++  if (g_jx_wifi_iram_heap == NULL && g_jx_wifi_iram_base != 0)
++    {
++      g_jx_wifi_iram_heap = mm_initialize("jx-wifi-iram",
++                                          (FAR void *)g_jx_wifi_iram_base,
++                                          g_jx_wifi_iram_size);
++    }
++
+   int ret;
+   wifi_init_config_t wifi_cfg = WIFI_INIT_CONFIG_DEFAULT();
+ 
+@@ -4666,6 +4797,13 @@ int esp_wifi_adapter_init(void)
+   wifi_cfg.dynamic_rx_buf_num = CONFIG_ESP32S3_WIFI_DYNAMIC_RXBUF_NUM;
+   wifi_cfg.dynamic_tx_buf_num = CONFIG_ESP32S3_WIFI_DYNAMIC_TXBUF_NUM;
+ 
++  /* ZXB-WIFI-TX: board uses SPI RAM but NuttX port does not expose
++   * CONFIG_SPIRAM to esp_wifi, so cache_tx_buf_num defaults to 0 and
++   * management frames (probe/auth) fail to TX during AP connect.
++   * Explicitly enable the internal cached TX buffer pool.
++   */
++  wifi_cfg.cache_tx_buf_num = 16;
++
+   ret = esp_wifi_init(&wifi_cfg);
+   if (ret)
+     {
+@@ -4751,6 +4889,17 @@ int esp_wifi_sta_start(void)
+       goto errout;
+     }
+ 
++  if (g_sta_wifi_cfg.sta.ssid[0] != '\0')
++    {
++      ret = esp_wifi_set_config(WIFI_IF_STA, &g_sta_wifi_cfg);
++      if (ret)
++        {
++          wlerr("Failed to set startup Wi-Fi config ret=%d\n", ret);
++          ret = wifi_errno_trans(ret);
++          goto errout;
++        }
++    }
++
+   ret = esp_wifi_start();
+   if (ret)
+     {
+@@ -4761,6 +4910,18 @@ int esp_wifi_sta_start(void)
+ 
+   g_sta_started = true;
+ 
++  if (g_sta_wifi_cfg.sta.ssid[0] != '\0')
++    {
++      g_sta_reconnect = true;
++      ret = esp_wifi_connect();
++      if (ret)
++        {
++          wlerr("Failed to connect after Wi-Fi start ret=%d\n", ret);
++          ret = wifi_errno_trans(ret);
++          goto errout;
++        }
++    }
++
+   wlinfo("OK to start Wi-Fi station\n");
+ 
+ errout:
+@@ -4964,6 +5125,7 @@ int esp_wifi_sta_password(struct iwreq *iwr, bool set)
+       if (ext->alg != IW_ENCODE_ALG_NONE)
+         {
+           memcpy(wifi_cfg.sta.password, pdata, len);
++          wifi_cfg.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
+         }
+ 
+       wifi_cfg.sta.pmf_cfg.capable = true;
+@@ -5108,27 +5270,25 @@ int esp_wifi_sta_essid(struct iwreq *iwr, bool set)
+       memset(wifi_cfg.sta.sae_h2e_identifier, 0x0, SAE_H2E_IDENTIFIER_LEN);
+       wifi_cfg.sta.sae_pwe_h2e = WPA3_SAE_PWE_BOTH;
+ 
+-      if (g_sta_connected)
++      if (1)
+         {
+-          ret = esp_wifi_sta_disconnect();
+-          if (ret)
+-            {
+-              wlerr("Failed to disconnect from Wi-Fi AP ret=%d\n", ret);
+-              return ret;
+-            }
++          g_sta_wifi_cfg = wifi_cfg;
+ 
+-          ret = esp_wifi_set_config(WIFI_IF_STA, &wifi_cfg);
+-          if (ret)
++          if (g_sta_started)
+             {
+-              wlerr("Failed to set Wi-Fi config data ret=%d\n", ret);
+-              return wifi_errno_trans(ret);
+-            }
++              ret = esp_wifi_sta_stop();
++              if (ret)
++                {
++                  wlerr("Failed to stop station for config ret=%d\n", ret);
++                  return ret;
++                }
+ 
+-          ret = esp_wifi_sta_connect();
+-          if (ret)
+-            {
+-              wlerr("Failed to connect to Wi-Fi AP ret=%d\n", ret);
+-              return ret;
++              ret = esp_wifi_sta_start();
++              if (ret)
++                {
++                  wlerr("Failed to restart station with config ret=%d\n", ret);
++                  return ret;
++                }
+             }
+         }
+ 
+@@ -6010,6 +6170,17 @@ int esp_wifi_softap_start(void)
+       goto errout;
+     }
+ 
++  if (g_softap_rxcb)
++    {
++      ret = esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_AP, g_softap_rxcb);
++      if (ret)
++        {
++          wlerr("Failed to register SoftAP RX callback ret=%d\n", ret);
++          ret = wifi_errno_trans(ret);
++          goto errout;
++        }
++    }
++
+   g_softap_started = true;
+ 
+   wlinfo("OK to start Wi-Fi SoftAP\n");
+@@ -6125,7 +6296,8 @@ int esp_wifi_softap_register_recv_cb(int (*recv_cb)(void *buffer,
+ {
+   int ret;
+ 
+-  ret = esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_AP, (wifi_rxcb_t)recv_cb);
++  g_softap_rxcb = (wifi_rxcb_t)recv_cb;
++  ret = esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_AP, g_softap_rxcb);
+ 
+   return wifi_errno_trans(ret);
+ }
+@@ -6219,7 +6391,8 @@ int esp_wifi_softap_password(struct iwreq *iwr, bool set)
+ 
+       if (ext->alg != IW_ENCODE_ALG_NONE)
+         {
+-          memcpy(wifi_cfg.sta.password, pdata, len);
++          memcpy(wifi_cfg.ap.password, pdata, len);
++          wifi_cfg.ap.authmode = WIFI_AUTH_WPA2_PSK;
+         }
+ 
+       if (g_softap_started)
+@@ -6230,6 +6403,16 @@ int esp_wifi_softap_password(struct iwreq *iwr, bool set)
+               wlerr("Failed to set Wi-Fi config data ret=%d\n", ret);
+               return wifi_errno_trans(ret);
+             }
++
++          if (g_softap_rxcb)
++            {
++              ret = esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_AP, g_softap_rxcb);
++              if (ret)
++                {
++                  wlerr("Failed to restore SoftAP RX callback ret=%d\n", ret);
++                  return wifi_errno_trans(ret);
++                }
++            }
+         }
+ 
+       g_softap_wifi_cfg = wifi_cfg;
+@@ -6310,6 +6493,16 @@ int esp_wifi_softap_essid(struct iwreq *iwr, bool set)
+               wlerr("Failed to set Wi-Fi config data ret=%d\n", ret);
+               return wifi_errno_trans(ret);
+             }
++
++          if (g_softap_rxcb)
++            {
++              ret = esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_AP, g_softap_rxcb);
++              if (ret)
++                {
++                  wlerr("Failed to restore SoftAP RX callback ret=%d\n", ret);
++                  return wifi_errno_trans(ret);
++                }
++            }
+         }
+ 
+       g_softap_wifi_cfg = wifi_cfg;
+@@ -6384,6 +6577,16 @@ int esp_wifi_softap_connect(void)
+       return wifi_errno_trans(ret);
+     }
+ 
++  if (g_softap_rxcb)
++    {
++      ret = esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_AP, g_softap_rxcb);
++      if (ret)
++        {
++          wlerr("Failed to restore SoftAP RX callback ret=%d\n", ret);
++          return wifi_errno_trans(ret);
++        }
++    }
++
+   return OK;
+ }
+ 
+@@ -6544,6 +6747,16 @@ int esp_wifi_softap_auth(struct iwreq *iwr, bool set)
+               wlerr("Failed to set Wi-Fi config data ret=%d\n", ret);
+               return wifi_errno_trans(ret);
+             }
++
++          if (g_softap_rxcb)
++            {
++              ret = esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_AP, g_softap_rxcb);
++              if (ret)
++                {
++                  wlerr("Failed to restore SoftAP RX callback ret=%d\n", ret);
++                  return wifi_errno_trans(ret);
++                }
++            }
+         }
+ 
+       g_softap_wifi_cfg = wifi_cfg;
+@@ -6593,6 +6806,16 @@ int esp_wifi_softap_freq(struct iwreq *iwr, bool set)
+               wlerr("Failed to set Wi-Fi config data ret=%d\n", ret);
+               return wifi_errno_trans(ret);
+             }
++
++          if (g_softap_rxcb)
++            {
++              ret = esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_AP, g_softap_rxcb);
++              if (ret)
++                {
++                  wlerr("Failed to restore SoftAP RX callback ret=%d\n", ret);
++                  return wifi_errno_trans(ret);
++                }
++            }
+         }
+ 
+       g_softap_wifi_cfg = wifi_cfg;
+diff --git a/arch/xtensa/src/esp32s3/esp32s3_wlan.c b/arch/xtensa/src/esp32s3/esp32s3_wlan.c
+index d7c0578d0b86ccbeb891ba692db364042c2aa25a..fab64c70d5073185521992bbe9ddb53e5f3e1760 100644
+--- a/arch/xtensa/src/esp32s3/esp32s3_wlan.c
++++ b/arch/xtensa/src/esp32s3/esp32s3_wlan.c
+@@ -520,26 +520,40 @@ static void wlan_transmit(struct wlan_priv_s *priv)
+ {
+   struct wlan_pktbuf *pktbuf;
+   int ret;
++  int txfail = 0;
+ 
+   while ((pktbuf = wlan_txframe(priv)))
+     {
+       ret = priv->ops->send(pktbuf->buffer, pktbuf->len);
+-      if (ret == -ENOMEM)
++      if (ret < 0)
+         {
+-          wlan_add_txpkt_head(priv, pktbuf);
+-          wd_start(&priv->txtimeout, WLAN_TXTOUT,
+-                   wlan_txtimeout_expiry, (uint32_t)priv);
+-          break;
++          /* [ZXB-TXRETRY] WiFi 刚关联后的一段时间内 esp_wifi_internal_tx
++           * 可能短暂返回错误（-EINVAL/-EIO 等）。直接丢包会让上层 TCP
++           * 认为数据已交驱动、等待 ACK 却永远等不到（无缓冲 TCP 的
++           * send() 会卡/报错）。这里与 -ENOMEM 同策略：插回队头，等
++           * WLAN_TXTOUT 后再试，连续 3 次仍失败才丢包（留给 TCP 重传
++           * 兜底），避免永久卡死。 */
++
++          if (++txfail < 4)
++            {
++              nwarn("WARN: TX retry %d (ret=%d)\n", txfail, ret);
++              wlan_add_txpkt_head(priv, pktbuf);
++              wd_start(&priv->txtimeout, WLAN_TXTOUT,
++                       wlan_txtimeout_expiry, (uint32_t)priv);
++              break;
++            }
++          else
++            {
++              nwarn("WARN: TX drop after retries (ret=%d)\n", ret);
++              txfail = 0;
++            }
+         }
+       else
+         {
+-          if (ret < 0)
+-            {
+-              nwarn("WARN: Failed to send pkt, ret: %d\n", ret);
+-            }
+-
+-          wlan_free_buffer(priv, pktbuf->buffer);
++          txfail = 0;
+         }
++
++      wlan_free_buffer(priv, pktbuf->buffer);
+     }
+ }
+ 
+@@ -612,7 +626,6 @@ static int wlan_rx_done(struct wlan_priv_s *priv, void *buffer,
+ 
+   memcpy(pktbuf->buffer, buffer, len);
+   pktbuf->len = len;
+-
+   if (eb)
+     {
+       esp_wifi_free_eb(eb);
+@@ -1576,6 +1589,22 @@ static void wlan_sta_tx_done(uint8_t *data, uint16_t *len, bool status)
+  ****************************************************************************/
+ 
+ #ifdef ESP32S3_WLAN_HAS_SOFTAP
++int esp32s3_wlan_softap_set_linkstatus(bool linkstatus)
++{
++  struct wlan_priv_s *priv = &g_wlan_priv[ESP32S3_WLAN_SOFTAP_DEVNO];
++
++  if (linkstatus)
++    {
++      netdev_carrier_on(&priv->dev);
++    }
++  else
++    {
++      netdev_carrier_off(&priv->dev);
++    }
++
++  return OK;
++}
++
+ static int wlan_softap_rx_done(void *buffer, uint16_t len, void *eb)
+ {
+   struct wlan_priv_s *priv = &g_wlan_priv[ESP32S3_WLAN_SOFTAP_DEVNO];
+diff --git a/arch/xtensa/src/esp32s3/esp32s3_wlan.h b/arch/xtensa/src/esp32s3/esp32s3_wlan.h
+index a522a602e5955130f0bb5aca8c1d787478ee62ae..7f90cee1c154d06b659e283489e9d28cb5cdc104 100644
+--- a/arch/xtensa/src/esp32s3/esp32s3_wlan.h
++++ b/arch/xtensa/src/esp32s3/esp32s3_wlan.h
+@@ -99,6 +99,7 @@ int esp32s3_wlan_sta_initialize(void);
+ 
+ #ifdef ESP32S3_WLAN_HAS_SOFTAP
+ int esp32s3_wlan_softap_initialize(void);
++int esp32s3_wlan_softap_set_linkstatus(bool linkstatus);
+ #endif /* ESP32S3_WLAN_HAS_SOFTAP */
+ 
+ #endif /* CONFIG_ESP32S3_WIFI */
+diff --git a/arch/xtensa/src/esp32s3/hal_i2s.c b/arch/xtensa/src/esp32s3/hal_i2s.c
+index 62acd2ce3410bf6986dc39d2f42060e87e99dbf9..88f0e5302903d9beb903998c131a4c92c0bce460 100644
+--- a/arch/xtensa/src/esp32s3/hal_i2s.c
++++ b/arch/xtensa/src/esp32s3/hal_i2s.c
+@@ -43,6 +43,13 @@
+  ****************************************************************************/
+ 
+ #include <nuttx/config.h>
++
++
++/* 2026-10-25: 待机语音侦听用的短超时。
++ * 0 = 默认 3 秒阻塞（正式录音）；>0 且 <500 时，超时直接返回，不打印、
++ * 不做 RX 自愈。这样 VAD 线程不会在录音期间卡住 3 秒，也不会把
++ * hal_i2s_rx_idle() 停掉的 RX 链又拉起来。 */
++volatile int g_i2s_read_timeout_ms = 0;
+ #include <nuttx/arch.h>
+ #include <nuttx/irq.h>
+ #include <nuttx/spinlock.h>
+@@ -53,6 +60,7 @@
+ #include <nuttx/audio/i2s.h>
+ #include <sys/param.h>
+ #include <string.h>
++#include <stdlib.h>
+ #include <errno.h>
+ #include <stdio.h>
+ 
+@@ -115,11 +123,19 @@ static int s_tx_inflight = 0;     /* 已排队未完成块数（单 TX 用户，
+  * rx.act 非空保护 → 两 apb 绝不重叠收数。内存增量仅 +1 apb（~4KB 瞬时
+  * 堆，段长/ring FIFO 不变）。 */
+ 
+-#define HAL_RX_PREFETCH_DEPTH  2    /* 预读在途 apb 深度（A/B 乒乓） */
++#define HAL_RX_PREFETCH_DEPTH  2    /* d2: 2 apb in flight, no gap (1011 fix) */
++
++/* RX APB effective payload and allocation padding.  The ESP32-S3 DMA
++ * descriptor rounds RX BUFLEN up for PSRAM (up to 64-byte alignment), so
++ * a 2044-byte payload can write 2048 bytes.  Keep the driver-visible
++ * length at 2044 but reserve enough backing storage for the rounded DMA
++ * write; otherwise the final cache line corrupts adjacent heap metadata. */
++#define HAL_RX_APB_WANT        2044
++#define HAL_RX_APB_PAD         64
++
+ 
+ static int16_t s_rx_fifo[HAL_RX_FIFO_SAMPLES];    /* 环形缓冲（static 4KB） */
+ static volatile uint32_t s_rx_fifo_rd;            /* 读指针 */
+-static volatile uint32_t s_rx_fifo_wr;            /* 写指针 */
+ static volatile uint32_t s_rx_fifo_cnt;           /* 有效采样数 */
+ static sem_t   s_rx_prefetch_sem;                 /* 有数据通知 */
+ static struct  hal_i2s_rx_ctx s_rx_prefetch_ctx;  /* 预读槽位上下文（共享 slot） */
+@@ -133,6 +149,7 @@ static volatile uint32_t s_rx_prefetch_inflight;  /* 在途 RX apb 数 */
+ 
+ static int hal_i2s_rx_prefetch_submit(int slot);
+ static void hal_i2s_rx_prefetch_start(int slot);
++int hal_i2s_rx_recover(void);
+ 
+ 
+ /****************************************************************************
+@@ -147,11 +164,17 @@ static void hal_i2s_rx_prefetch_start(int slot);
+  * 回调（回调返回后不再访问 apb）。
+  ****************************************************************************/
+ 
++struct hal_i2s_rx_pool
++{
++  FAR struct ap_buffer_s *apb[HAL_RX_PREFETCH_DEPTH];
++  volatile uint8_t        busy[HAL_RX_PREFETCH_DEPTH];
++};
++
+ struct hal_i2s_rx_ctx
+ {
+-  FAR int16_t *dst;   /* 目标单声道缓冲 */
+-  int           slot; /* 0=左 MIC1 / 1=右 MIC2 */
+-  uint32_t      got;  /* 已提取采样数 */
++  FAR struct hal_i2s_rx_pool *pool; /* 常驻 RX APB 池 */
++  int                        slot;  /* 0=左 MIC1 / 1=右 MIC2 */
++  uint32_t                   got;   /* 已提取采样数 */
+ };
+ 
+ static void hal_i2s_tx_cb(FAR struct i2s_dev_s *dev,
+@@ -173,33 +196,59 @@ static void hal_i2s_rx_prefetch_cb(FAR struct i2s_dev_s *dev,
+                                    FAR void *arg, int result)
+ {
+   FAR struct hal_i2s_rx_ctx *ctx = (FAR struct hal_i2s_rx_ctx *)arg;
++  FAR struct hal_i2s_rx_pool *pool = ctx->pool;
+   uint32_t nframe = (uint32_t)(apb->nbytes / 2);
+   FAR const int16_t *src = (FAR const int16_t *)apb->samp;
+   uint32_t i;
++  int pi = -1;
+   irqstate_t flags;
+ 
+   (void)dev;
+   g_rx_result = result;
+ 
+-  /* 在途计数 -1（临界区：与 read_slot 的 submit 预订并发）。
+-   * 本 apb 的 DMA 已完成；TX 前同步等待据此判空闲。 */
+-
+-  flags = enter_critical_section();
+-  if (s_rx_prefetch_inflight > 0)
++  if (pool != NULL)
+     {
+-      s_rx_prefetch_inflight--;
++      for (i = 0; i < HAL_RX_PREFETCH_DEPTH; i++)
++        {
++          if (pool->apb[i] == apb)
++            {
++              pi = (int)i;
++              break;
++            }
++        }
+     }
+ 
+-  leave_critical_section(flags);
++  /* 2026-10-13: 被取消（rx_abort）或失败的传输不写环形 FIFO -- 此时
++   * apb->nbytes / dmadesc 是残留值，写进去会污染录音。只清在途状态并
++   * 唤醒等待者，让上层据此走恢复路径。 */
+ 
+-  apb_free(apb);                  /* 先释放，apb 池空出 */
++  if (result != OK)
++    {
++      flags = enter_critical_section();
++      if (pi >= 0) { pool->busy[pi] = 0; }
++      if (s_rx_prefetch_inflight > 0) { s_rx_prefetch_inflight--; }
++      leave_critical_section(flags);
++      sem_post(&s_rx_prefetch_sem);
++      return;
++    }
+ 
+-  /* 环形写 FIFO（满则覆盖最旧 = auto_clear 等效，无残留混叠） */
++  {
++    static unsigned diag_n, diag_zero;
++    unsigned nz_left=0, nz_right=0;
++    for (i=0; i<nframe/2; i++)
++      {
++        if (src[2*i] != 0) nz_left++;
++        if (src[2*i+1] != 0) nz_right++;
++      }
++    if (diag_n++ < 2 || (!nz_left && diag_zero++ < 4))
++      printf("[ADC_SLOT_DIAG] frames=%u nzL=%u nzR=%u slot=%d\n",
++             (unsigned)(nframe/2),nz_left,nz_right,ctx->slot);
++  }
+ 
+   flags = enter_critical_section();
+   for (i = 0; i < nframe / 2; i++)
+     {
+-      uint32_t w = (s_rx_fifo_wr + s_rx_fifo_cnt) & HAL_RX_FIFO_MASK;
++      uint32_t w = (s_rx_fifo_rd + s_rx_fifo_cnt) & HAL_RX_FIFO_MASK;
+ 
+       s_rx_fifo[w] = src[2 * i + ctx->slot];
+       if (s_rx_fifo_cnt < HAL_RX_FIFO_SAMPLES)
+@@ -212,89 +261,139 @@ static void hal_i2s_rx_prefetch_cb(FAR struct i2s_dev_s *dev,
+         }
+     }
+ 
+-  leave_critical_section(flags);
+-  sem_post(&s_rx_prefetch_sem);   /* 通知 read_slot 有数据 */
++  if (pi >= 0)
++    {
++      pool->busy[pi] = 0;
++    }
+ 
+-  /* ⚠️ 自动续到深度 2：本 apb 完成 → 补一个进 pend，让队列恒有 ≥1 个
+-   * 在等 → 下一个 apb 的 EOF 中断（ISR）直接装载，无 worker 空窗。
+-   * 只有未暂停（播放中）才续——否则 stop 无效、TX 仍与 RX 并发。 */
++  if (s_rx_prefetch_inflight > 0)
++    {
++      s_rx_prefetch_inflight--;
++    }
+ 
++  leave_critical_section(flags);
++  sem_post(&s_rx_prefetch_sem);
++
++  /* No apb_free here: the pool keeps one reference forever.  The driver's
++   * matching apb_free() runs after this callback and leaves that base ref. */
+   if (!s_rx_prefetch_paused)
+     {
+       hal_i2s_rx_prefetch_submit(ctx->slot);
+     }
+ }
+ 
+-/* 提交一个预读 RX apb（不等待）。窗口（≤ HAL_RX_PREFETCH_DEPTH）用
+- * 临界区"检查+预订"保证——read_slot（应用线程）与完成回调（worker）
+- * 可能并发调用，防止超深/重复提交。 */
++static FAR struct hal_i2s_rx_pool *hal_i2s_rx_pool_get(void)
++{
++  FAR struct hal_i2s_rx_pool *pool = s_rx_prefetch_ctx.pool;
++  int i;
++
++  if (pool != NULL)
++    {
++      return pool;
++    }
++
++  pool = (FAR struct hal_i2s_rx_pool *)calloc(1, sizeof(*pool));
++  if (pool == NULL)
++    {
++      return NULL;
++    }
++
++  for (i = 0; i < HAL_RX_PREFETCH_DEPTH; i++)
++    {
++      struct audio_buf_desc_s desc;
++      FAR struct ap_buffer_s *apb = NULL;
++      int ret;
++
++      memset(&desc, 0, sizeof(desc));
++      desc.numbytes = HAL_RX_APB_WANT + HAL_RX_APB_PAD;
++      desc.u.pbuffer = &apb;
++      ret = apb_alloc(&desc);
++      if (ret < 0 || apb == NULL)
++        {
++          break;
++        }
++
++      apb->nmaxbytes = HAL_RX_APB_WANT;
++      apb->nbytes = HAL_RX_APB_WANT;
++      apb->curbyte = 0;
++      pool->apb[i] = apb;
++    }
++
++  if (i != HAL_RX_PREFETCH_DEPTH)
++    {
++      int j;
++      for (j = 0; j < i; j++)
++        {
++          apb_free(pool->apb[j]);
++        }
++      free(pool);
++      return NULL;
++    }
++
++  s_rx_prefetch_ctx.pool = pool;
++  return pool;
++}
+ 
+ static int hal_i2s_rx_prefetch_submit(int slot)
+ {
+-  struct audio_buf_desc_s desc;
+-  FAR struct ap_buffer_s *apb = NULL;
+-  uint32_t want;
+-  int ret;
++  FAR struct hal_i2s_rx_pool *pool;
++  FAR struct ap_buffer_s *apb;
++  int pi = -1;
++  int i, ret;
+   irqstate_t flags;
+ 
+-  /* 窗口检查 + 预订（临界区） */
++  pool = hal_i2s_rx_pool_get();
++  if (pool == NULL)
++    {
++      return -ENOMEM;
++    }
+ 
+   flags = enter_critical_section();
+   if (s_rx_prefetch_paused || s_rx_prefetch_inflight >= HAL_RX_PREFETCH_DEPTH)
+     {
+       leave_critical_section(flags);
+-      return 0;   /* 已暂停 / 窗口已满 */
++      return 0;
+     }
+ 
+-  s_rx_prefetch_inflight++;       /* 预订：本 apb 将入队 */
+-  leave_critical_section(flags);
+-
+-  want = HAL_RX_FIFO_SAMPLES * 2;   /* 立体声 2 槽 × 16bit = 单声道采样×4 */
+-  if (want > 2044)
++  for (i = 0; i < HAL_RX_PREFETCH_DEPTH; i++)
+     {
+-      /* ⚠️ 2026-09-02 内存适配：原 4092B apb 在系统堆见底时
+-       * （free≈3.2KB/largest≈3.2KB，LVGL 80KB + 相机 37.5KB 静态挤压）
+-       * apb_alloc 失败 → 预读链不启动 → RX_START=0 → 0 数据。
+-       * 降 2044B（511 帧≈21ms/轮）保证 apb 总能从堆分配成功。
+-       * 双深后两个 apb 同时在途 ≈ +4KB 瞬时堆（堆空闲 22KB，无压力）。 */
+-
+-      want = 2044;
++      if (!pool->busy[i])
++        {
++          pi = i;
++          break;
++        }
+     }
+ 
+-  memset(&desc, 0, sizeof(desc));
+-  desc.numbytes = want;
+-  desc.u.pbuffer = &apb;
+-  ret = apb_alloc(&desc);
+-  if (ret < 0)
++  if (pi < 0)
+     {
+-      goto errout_with_resv;
++      leave_critical_section(flags);
++      return 0;
+     }
+ 
++  pool->busy[pi] = 1;
++  s_rx_prefetch_inflight++;
++  leave_critical_section(flags);
++
++  apb = pool->apb[pi];
++  apb->nmaxbytes = HAL_RX_APB_WANT;
++  apb->nbytes = HAL_RX_APB_WANT;
++  apb->curbyte = 0;
+   s_rx_prefetch_ctx.slot = slot;
+   s_rx_prefetch_ctx.got = 0;
+ 
+-  apb->nbytes = want;
+-  apb->curbyte = 0;
+   ret = g_dev->ops->i2s_receive(g_dev, apb, hal_i2s_rx_prefetch_cb,
+                                 &s_rx_prefetch_ctx, SEC2TICK(3));
+   if (ret < 0)
+     {
+-      apb_free(apb);
+-      goto errout_with_resv;
+-    }
+-
+-  return 0;
+-
+-errout_with_resv:
+-  /* 入队失败：回滚预订（下次 read_slot/回调再试） */
+-
+-  flags = enter_critical_section();
+-  if (s_rx_prefetch_inflight > 0)
+-    {
+-      s_rx_prefetch_inflight--;
++      flags = enter_critical_section();
++      pool->busy[pi] = 0;
++      if (s_rx_prefetch_inflight > 0)
++        {
++          s_rx_prefetch_inflight--;
++        }
++      leave_critical_section(flags);
+     }
+ 
+-  leave_critical_section(flags);
+   return ret;
+ }
+ 
+@@ -350,6 +449,62 @@ static void hal_i2s_rx_prefetch_stop(void)
+     }
+ }
+ 
++/* v97 诊断：把 RX 预读链置为空闲（同步等 RX DMA 归零）。
++ * app 侧在"录音结束 -> 编解码"这段纯计算期调用，避免 RX DMA 与
++ * hpwork 的 apb alloc/free 和编解码并发（loop 1 曾在 i2s_rx_worker
++ * 的 apb_free 里踩到坏堆 mm_free.c:208 断言）。read_slot 下次调用
++ * 会自动把链重启，语义与 TX 前的 stop 完全一致。 */
++
++void hal_i2s_rx_idle(void)
++{
++  hal_i2s_rx_prefetch_stop();
++}
++
++/* Start a logical recording with a fresh software FIFO. TX pauses the
++ * prefetch chain but deliberately retains its samples; those samples belong
++ * to the previous session. Wait for old DMA callbacks before clearing only
++ * the software queue. Never abort/free driver-owned APBs or fabricate data. */
++int hal_i2s_rx_begin_capture(int slot)
++{
++  irqstate_t flags;
++  unsigned stale;
++  if(slot!=0 && slot!=1)return -EINVAL;
++  if(g_dev==NULL)return -ENODEV;
++  hal_i2s_rx_prefetch_stop();
++  if(s_rx_prefetch_inflight!=0)return -ETIMEDOUT;
++  flags=enter_critical_section();
++  stale=s_rx_fifo_cnt;
++  s_rx_fifo_cnt=0;
++  s_rx_fifo_rd=0;
++  leave_critical_section(flags);
++  while(nxsem_trywait(&s_rx_prefetch_sem)==0){}
++  /* Keep RX paused. The next read_slot enables clocks and fills the chain,
++   * so no current-session samples can arrive between clearing and reading. */
++  return (int)stale;
++}
++
++/* 2026-10-13 硬恢复：RX 链卡死时复位并重启。
++ *
++ * 触发场景：ES7210 没锁上 MCLK/LRCK -> RX DMA 收不满 apb -> EOF 中断不来
++ * -> 预读链在途计数停在深度值不归零 -> hal_i2s_rx_prefetch_start 里的
++ * while 进不去（inflight >= DEPTH）-> 之后每次 read_slot 都 3 秒超时，
++ * 录音拿 0 样本（重试多少次都一样，现场表现就是"提示音响完没反应"）。
++ *
++ * 步骤：①暂停预读链；②让驱动取消在途/待发（回调把 inflight 归零）；
++ * ③等归零（<=300ms），仍不归零就强制清零兜底；④清环形 FIFO 与残留
++ * 信号量；⑤重新补满预读链。 */
++
++int hal_i2s_rx_recover(void)
++{
++  /* 2026-10-13: the previous implementation aborted the driver RX
++   * queues and freed containers behind the driver's back. That
++   * double-freed APBs and corrupted the heap (mallinfo() then
++   * panicked while walking it). Recovery is no longer needed once
++   * the real capture bug is fixed, so keep this a no-op stub and
++   * leave the driver's own queues untouched. */
++  return 0;
++}
++
+ /****************************************************************************
+  * 公共 API
+  ****************************************************************************/
+@@ -368,10 +523,13 @@ int hal_i2s_init(void)
+   s_rx_prefetch_paused = false;
+   s_rx_prefetch_inflight = 0;
+ 
+-  /* PA 使能（GPIO46，高电平 = 喇叭功放开） */
++  /* 2026-10-23: 默认关闭功放。官方小智只在放音时把 PA 拉高，
++   * 录音/空闲时拉低；旧代码一上电就常开，功放长期工作会经电源和
++   * 地线干扰 ES8311 的 MIC 模拟前端。提示音由 ai_voice_play_tone
++   * 临时打开。 */
+ 
+   esp32s3_configgpio(HAL_PA_PIN, OUTPUT);
+-  esp32s3_gpiowrite(HAL_PA_PIN, true);
++  esp32s3_gpiowrite(HAL_PA_PIN, false);
+ 
+   /* 官方驱动初始化（按 Kconfig：master、24k、16bit、2 槽全双工；
+    * 内部自动配时钟/DMA/中断，TX+RX 通道已启动） */
+@@ -414,6 +572,74 @@ int hal_i2s_init(void)
+       g_dev->ops->i2s_rxchannels(g_dev, 2);
+     }
+ 
++  /* 2026-10-22 v13: NuttX 的 i2s_rxchannels() 只存了 priv->channels，
++   * 没有写 RX_TDM_CTRL。复位值是 TOT_CHAN_NUM=0 / CHAN_BITS=0xFFFF /
++   * 通道使能全开，RX 序列化器会把 ES8311 的 L/R 数据帧错位，读出来
++   * 全 0。这里按官方 ESP-IDF / i2s_txchannels 的写法补上：
++   *   TOT_CHAN_NUM = 1（2 通道）
++   *   CHAN0_EN | CHAN1_EN
++   *   RX_MONO = 0（立体声）
++   * 然后置 RX_UPDATE 生效。 */
++
++  modifyreg32(I2S_RX_TDM_CTRL_REG(0), I2S_RX_TDM_TOT_CHAN_NUM_M,
++              FIELD_TO_VALUE(I2S_RX_TDM_TOT_CHAN_NUM, 1));
++  {
++    uint32_t rxm = getreg32(I2S_RX_TDM_CTRL_REG(0));
++    rxm &= 0xffff0000;
++    rxm |= (1u << 0) | (1u << 1);   /* CHAN0_EN | CHAN1_EN */
++    putreg32(rxm, I2S_RX_TDM_CTRL_REG(0));
++  }
++  modifyreg32(I2S_RX_CONF_REG(0), I2S_RX_MONO_M, 0);
++  modifyreg32(I2S_RX_CONF_REG(0), 0, I2S_RX_UPDATE);
++
++  /* 2026-10-22 v14: 对齐 ESP-IDF i2s_std 的 Philips 帧格式。
++   *
++   * NuttX 的 i2s_set_datawidth() 在非 PCM 模式下把
++   * RX_TDM_WS_WIDTH 写成 1（= 2 个 BCLK）。ESP-IDF 的
++   * I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG 里 ws_width = 16bit，
++   * 驱动实际写 ws_width-1 = 15（= 16 个 BCLK，半个 32bit 帧）。
++   *
++   * WS 只有 2 个 BCLK 时，RX 序列化器只在 WS 高电平的 2 个
++   * BCLK 内取值，其余 14 bit 全部丢掉 -> 录到的 PCM 幅度只剩
++   * 满量程的很小一部分（v13 实测 acrms=178、峰值 0.002）。
++   *
++   * 官方 xiaozhi 同款板 sp-esp32-s3-1.54-muma：
++   *   24kHz / 16bit / stereo / MCLK 256x / Philips / left_align
++   * 这里把 RX/TX 的 WS 宽度、MSB 移位、左对齐一次性对齐 IDF。 */
++
++  modifyreg32(I2S_RX_CONF1_REG(0), I2S_RX_TDM_WS_WIDTH_M,
++              FIELD_TO_VALUE(I2S_RX_TDM_WS_WIDTH, 15));
++  modifyreg32(I2S_RX_CONF1_REG(0), I2S_RX_MSB_SHIFT_M, I2S_RX_MSB_SHIFT);
++  modifyreg32(I2S_RX_CONF_REG(0), I2S_RX_LEFT_ALIGN_M, I2S_RX_LEFT_ALIGN);
++  modifyreg32(I2S_RX_CONF_REG(0), 0, I2S_RX_UPDATE);
++
++  modifyreg32(I2S_TX_CONF1_REG(0), I2S_TX_TDM_WS_WIDTH_M,
++              FIELD_TO_VALUE(I2S_TX_TDM_WS_WIDTH, 15));
++  modifyreg32(I2S_TX_CONF1_REG(0), I2S_TX_MSB_SHIFT_M, I2S_TX_MSB_SHIFT);
++  modifyreg32(I2S_TX_CONF_REG(0), I2S_TX_LEFT_ALIGN_M, I2S_TX_LEFT_ALIGN);
++  modifyreg32(I2S_TX_CONF_REG(0), 0, I2S_TX_UPDATE);
++
++  printf("[I2S] v14 fmt RX_CONF1=%08lx TX_CONF1=%08lx\n",
++         (unsigned long)getreg32(I2S_RX_CONF1_REG(0)),
++         (unsigned long)getreg32(I2S_TX_CONF1_REG(0)));
++
++  /* 2026-10-22 v12: 显式把 MCLK 锁到 256x = 6.144MHz，和官方 xiaozhi
++   * 的 I2S_MCLK_MULTIPLE_256 对齐。打印请求值和实际值，排查时钟不匹配。 */
++
++  if (g_dev->ops->i2s_setmclkfrequency != NULL)
++    {
++      uint32_t want = (uint32_t)HAL_RATE * 256;
++      uint32_t got = g_dev->ops->i2s_setmclkfrequency(g_dev, want);
++      printf("[I2S] MCLK want=%lu got=%lu\n",
++             (unsigned long)want, (unsigned long)got);
++
++      if (g_dev->ops->i2s_getmclkfrequency != NULL)
++        {
++          printf("[I2S] MCLK readback=%lu\n",
++                 (unsigned long)g_dev->ops->i2s_getmclkfrequency(g_dev));
++        }
++    }
++
+   /* ⚠️ 2026-08-25：TX FIFO 空时也要保持 BCK/WS 输出（STOP_EN=0）。
+    * 官方驱动未配置该位——录音只开 RX 时 TX 无数据流，若 FIFO 空时钟
+    * 停 → RX（SIG_LOOPBACK 共享 TX 时钟）收不到数据。 */
+@@ -438,6 +664,17 @@ int hal_i2s_init(void)
+ 
+   modifyreg32(I2S_TX_CONF_REG(0), 0, I2S_TX_START);
+ 
++  /* 2026-10-22 v12: 打印 RX/TX 的 TDM/时钟配置，和 ESP-IDF 官方
++   * (24k/16bit/stereo/256x MCLK) 对比，排查 slot 位宽/BCLK 分频。 */
++
++  printf("[I2S] CFG RX_CONF=%08lx RX_TDM=%08lx RX_CLKM=%08lx "
++         "TX_CLKM=%08lx RXEOF=%lu\n",
++         (unsigned long)getreg32(I2S_RX_CONF_REG(0)),
++         (unsigned long)getreg32(I2S_RX_TDM_CTRL_REG(0)),
++         (unsigned long)getreg32(I2S_RX_CLKM_CONF_REG(0)),
++         (unsigned long)getreg32(I2S_TX_CLKM_CONF_REG(0)),
++         (unsigned long)getreg32(I2S_RXEOF_NUM_REG(0)));
++
+   /* 排空残留信号量（官方驱动启动时可能已有完成事件） */
+ 
+   while (nxsem_trywait(&g_tx_done_sem) == 0);
+@@ -515,7 +752,10 @@ static int hal_tx_wait(int want)
+ {
+   while (s_tx_inflight > want)
+     {
+-      if (nxsem_tickwait(&g_tx_done_sem, SEC2TICK(5)) < 0)
++      /* 2026-10-29: 5 秒太长。提示音是 3 短 1 长共 4 次调用，
++       * 每次卡 5 秒就是 20 秒，用户按完 BOOT 半分钟没反应。
++       * 一块 21 ms，1 秒足够判定 DMA 异常。 */
++      if (nxsem_tickwait(&g_tx_done_sem, SEC2TICK(1)) < 0)
+         {
+           printf("[I2S] TX 排空超时 (inflight=%d)!\n", s_tx_inflight);
+           while (nxsem_trywait(&g_tx_done_sem) == 0);
+@@ -614,12 +854,54 @@ int hal_i2s_read_slot(void *buf, uint32_t bytes, int slot)
+ 
+   /* 确保预读链在跑且满（深度 2：首次调用 / 播放后重启自动补满） */
+ 
++  /* 2026-10-13: full-duplex RX shares TX BCK/WS through SIG_LOOPBACK.
++   * If TX_CONF.TX_STOP_EN is 1, an empty TX FIFO stops BCK/WS, the
++   * ES7210 loses its clock and RX DMA never completes (read_slot
++   * times out with 0 samples). Force the shared clock on before
++   * every record loop; idempotent and nearly free. */
++  {
++    static int s_clk_dbg = 0;
++    uint32_t txc = getreg32(I2S_TX_CONF_REG(0));
++    if (!s_clk_dbg)
++      {
++        s_clk_dbg = 1;
++        printf("[I2S] read_slot in: TX_CONF=0x%08x STOP_EN=%u TX_START=%u\n",
++               (unsigned)txc,
++               (unsigned)((txc & I2S_TX_STOP_EN) ? 1 : 0),
++               (unsigned)((txc & I2S_TX_START) ? 1 : 0));
++      }
++    modifyreg32(I2S_TX_CONF_REG(0), I2S_TX_STOP_EN, 0);
++    modifyreg32(I2S_TX_CONF_REG(0), 0, I2S_TX_START);
++  }
++
+   hal_i2s_rx_prefetch_start(slot);
+ 
+   /* 从环形 FIFO 取数：先取已有，不够等预读回调（自动续链持续供数） */
+ 
++  int recover_try = 0;
++  uint32_t t_enter = (uint32_t)clock_systime_ticks();
++
+   while (got < want_samp)
+     {
++      /* 2026-10-25: hard wall-clock cap.  The prefetch ISR can keep
++       * posting s_rx_prefetch_sem while delivering no samples (e.g. RX
++       * DMA chain stuck), in which case the per-wait timeout never
++       * triggers and read_slot spins forever -- the take then never
++       * returns and the link never sends last=1.  One read is ~42 ms of
++       * audio; 800 ms is generous and still bounds the hang. */
++      if ((uint32_t)(clock_systime_ticks() - t_enter) > (uint32_t)MSEC2TICK(800))
++        {
++          static int s_hard_to;
++          if (s_hard_to++ < 8)
++            {
++              printf("[I2S] read_slot hard timeout: got=%u/%u fifo=%u inflight=%u\n",
++                     (unsigned)got, (unsigned)want_samp,
++                     (unsigned)s_rx_fifo_cnt,
++                     (unsigned)s_rx_prefetch_inflight);
++            }
++          break;
++        }
++
+       flags = enter_critical_section();
+       while (s_rx_fifo_cnt > 0 && got < want_samp)
+         {
+@@ -635,14 +917,59 @@ int hal_i2s_read_slot(void *buf, uint32_t bytes, int slot)
+           break;
+         }
+ 
+-      if (nxsem_tickwait(&s_rx_prefetch_sem, SEC2TICK(3)) < 0)
++      {
++        int wait_ms = g_i2s_read_timeout_ms;
++
++        if (wait_ms <= 0) { wait_ms = 3000; }
++
++      if (nxsem_tickwait(&s_rx_prefetch_sem, MSEC2TICK(wait_ms)) < 0)
+         {
++          /* 短超时模式（VAD）：安静返回，不刷屏、不碰 RX 链。 */
++          if (g_i2s_read_timeout_ms > 0 && g_i2s_read_timeout_ms < 500)
++            {
++              break;
++            }
++
+           printf("[I2S] RX FIFO 超时（预读链断？TX_CONF=0x%08x "
+                  "RX_CONF=0x%08x）\n",
+                  (unsigned)getreg32(I2S_TX_CONF_REG(0)),
+                  (unsigned)getreg32(I2S_RX_CONF_REG(0)));
++
++          /* 2026-10-13 自愈：RX 链已死（DMA 收不满 -> EOF 中断不来 ->
++           * 在途计数不归零 -> start 补不上链），复位并重启一次再等。
++           * 最多自救 2 次，仍无数据才放弃（上层据此整段重试录音）。 */
++
++          if (recover_try == 0)
++            {
++              printf("[I2S] dbg: inflight=%u paused=%d fifocnt=%u rxres=%d\n"
++                     "      RX_CONF=0x%08x INT_RAW=0x%08x RXEOF_NUM=%u\n"
++                     "      STATE=0x%08x RX_CLKM=0x%08x RX_TDM=0x%08x\n"
++                     "      TX_CLKM=0x%08x RX_TIMING=0x%08x\n",
++                     (unsigned)s_rx_prefetch_inflight,
++                     (int)s_rx_prefetch_paused,
++                     (unsigned)s_rx_fifo_cnt, g_rx_result,
++                     (unsigned)getreg32(I2S_RX_CONF_REG(0)),
++                     (unsigned)getreg32(I2S_INT_RAW_REG(0)),
++                     (unsigned)getreg32(I2S_RXEOF_NUM_REG(0)),
++                     (unsigned)getreg32(I2S_STATE_REG(0)),
++                     (unsigned)getreg32(I2S_RX_CLKM_CONF_REG(0)),
++                     (unsigned)getreg32(I2S_RX_TDM_CTRL_REG(0)),
++                     (unsigned)getreg32(I2S_TX_CLKM_CONF_REG(0)),
++                     (unsigned)getreg32(I2S_RX_TIMING_REG(0)));
++            }
++
++          if (recover_try < 2)
++            {
++              recover_try++;
++              printf("[I2S] RX 链自愈：复位并重启预读链（第 %d 次）\n",
++                     recover_try);
++              hal_i2s_rx_recover();
++              continue;
++            }
++
+           break;
+         }
++      }
+     }
+ 
+   return (int)(got * 2);
+diff --git a/arch/xtensa/src/esp32s3/hal_i2s.h b/arch/xtensa/src/esp32s3/hal_i2s.h
+index d3489105c5ec5b8b1d377dc822f58fb9c690132c..3f379baf834ccbb3fd29de9664066a41f1d7a41f 100644
+--- a/arch/xtensa/src/esp32s3/hal_i2s.h
++++ b/arch/xtensa/src/esp32s3/hal_i2s.h
+@@ -32,11 +32,11 @@ extern "C" {
+ 
+ /* 引脚定义（板级硬件） */
+ 
+-#define HAL_I2S_PIN_MCLK   2
+-#define HAL_I2S_PIN_BCLK  17
++#define HAL_I2S_PIN_MCLK  16
++#define HAL_I2S_PIN_BCLK   9
+ #define HAL_I2S_PIN_WS    45
+-#define HAL_I2S_PIN_DOUT  15
+-#define HAL_I2S_PIN_DIN   16
++#define HAL_I2S_PIN_DOUT   8
++#define HAL_I2S_PIN_DIN   10
+ #define HAL_PA_PIN        46
+ 
+ /* 采样参数 */
+@@ -117,6 +117,11 @@ int hal_i2s_write_read_sync(const void *tx_buf, uint32_t tx_bytes,
+  */
+ int hal_i2s_rx_set_channel(int slot);
+ 
++/* v97：把 RX 预读链置为空闲（纯计算期停 RX DMA）。*/
++void hal_i2s_rx_idle(void);
++/* Returns discarded previous-session samples, or a negative error. */
++int hal_i2s_rx_begin_capture(int slot);
++
+ /**
+  * @brief 诊断：打印 I2S TX 状态（TX_CONF/TX_CONF1/STATE/TX_CLKM）
+  *        无声排查用——播放"完成"却无声时看 TX_START/STOP_EN/IDLE
+diff --git a/boards/xtensa/esp32s3/common/src/esp32s3_board_spiflash.c b/boards/xtensa/esp32s3/common/src/esp32s3_board_spiflash.c
+index 90bc424742b7ce565211ebf397a46c132c3b9f44..0b3c82c49cf523db90376da5cdcf1eafcccce663 100644
+--- a/boards/xtensa/esp32s3/common/src/esp32s3_board_spiflash.c
++++ b/boards/xtensa/esp32s3/common/src/esp32s3_board_spiflash.c
+@@ -436,11 +436,20 @@ int board_spiflash_init(void)
+       return ret;
+     }
+ 
++
++  /* JX 2026-09-13：极讯 codec 不用 /data。
++   * 开机标记定位过：把 PSRAM 整块并入公共堆（ESP32S3_PSRAM_STATIC_CARVE_SIZE=0）后，
++   * littlefs 在 SPI-flash MTD 上的挂载会在 board_app_initialize 里死等（无任何打印）。
++   * 不挂 /data 后系统正常启动，且启动时间从 ~11s 降到 ~5s。
++   * 需要 /data 时把 #if 0 改成 #if 1（并把 carve 改回 0x200000）。 */
++#if 0
+   ret = init_storage_partition();
+   if (ret < 0)
+     {
+       return ret;
+     }
++#endif
++
+ 
+ #ifdef CONFIG_ESP32S3_HAVE_OTA_PARTITION
+   ret = init_ota_partitions();
+diff --git a/boards/xtensa/esp32s3/esp32s3-box/configs/openvela/partition_table.csv b/boards/xtensa/esp32s3/esp32s3-box/configs/openvela/partition_table.csv
+index 59e369caaf2568e1dae2bcff4e134b90e609f995..29797b048987bdfa363fad1d4b9678cf38f401b1 100644
+--- a/boards/xtensa/esp32s3/esp32s3-box/configs/openvela/partition_table.csv
++++ b/boards/xtensa/esp32s3/esp32s3-box/configs/openvela/partition_table.csv
+@@ -3,6 +3,5 @@
+ nvs,         data, nvs,     0x9000,    0x4000,
+ otadata,     data, ota,     0xD000,    0x2000,
+ phy_init,    data, phy,     0xF000,    0x1000,
+-ota_0,       app,  ota_0,   0x10000,   0x200000,
+-ota_1,       app,  ota_1,   0x210000,  0x200000,
+-storage,     data, fat,     0x410000,  0x3F0000,
++ota_0,       app,  ota_0,   0x10000,   0xB00000,
++storage,     data, fat,     0xC10000,  0x3F0000,
+diff --git a/boards/xtensa/esp32s3/esp32s3-box/src/Make.defs b/boards/xtensa/esp32s3/esp32s3-box/src/Make.defs
+index 4d3f9ec9674a6fc3555d3d4e0c4ebd5d57c959c9..cef7a509455be5ac70e41a5ed085a0ad0b0e0ed7 100644
+--- a/boards/xtensa/esp32s3/esp32s3-box/src/Make.defs
++++ b/boards/xtensa/esp32s3/esp32s3-box/src/Make.defs
+@@ -51,7 +51,7 @@ ifeq ($(CONFIG_ESP32S3_BOARD_TOUCHSCREEN),y)
+     ifeq ($(CONFIG_ESP32_S3_BOX),y)
+         CSRCS += esp32s3_board_touchsceen_tt21100.c
+     else
+-        CSRCS += esp32s3_board_touchsceen_gt911.c
++        CSRCS += esp32s3_board_touchsceen_cst816.c
+     endif
+ endif
+ 
+diff --git a/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3-box.h b/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3-box.h
+index 9fe8405a8b87961628e68624d48636351c3607cd..1699da3228bc334bbe05bd99f51da038f5c77d0a 100644
+--- a/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3-box.h
++++ b/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3-box.h
+@@ -52,27 +52,28 @@
+  * MISO: N/A
+  */
+ 
+-#define DISPLAY_DC          4
+-#define DISPLAY_BCKL      47
++#define DISPLAY_DC          47
++#define DISPLAY_BCKL      42
+ 
+-#define DISPLAY_RST         48
++#define DISPLAY_RST         38
+ 
+ /* Touchpad */
+ 
+-#define TOUCHSCEEN_I2C      0
++#define TOUCHSCEEN_I2C      1
+ 
+ /* SCL: 18
+  * SDA: 8
+  */
+ 
+ #ifdef CONFIG_ESP32_S3_BOX
+-#  define TOUCHSCEEN_ADDR   0x24
++#  define TOUCHSCEEN_ADDR   0x15
+ #else
+-#  define TOUCHSCEEN_ADDR   0x5d
++#  define TOUCHSCEEN_ADDR   0x15
+ #endif
+ 
+-#define TOUCHSCEEN_CLOCK    (400 * 1000)
+-#define TOUCHSCEEN_INT      3
++#define TOUCHSCEEN_CLOCK    (100 * 1000)
++#define TOUCHSCEEN_INT      12
++#define TOUCHSCEEN_RST      6
+ 
+ /****************************************************************************
+  * Public Types
+diff --git a/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_appinit.c b/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_appinit.c
+index ce9476cd9091f251cfbe60fcf47f6856e462df14..13315c4bdaeeb61b605bce1d44b9bad7e91f0449 100644
+--- a/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_appinit.c
++++ b/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_appinit.c
+@@ -28,13 +28,47 @@
+ 
+ #include <sys/types.h>
+ #include <debug.h>
++#include <unistd.h>
+ #include <nuttx/board.h>
+ #include <nuttx/sched.h>
+ 
+ #include "esp32s3-box.h"
+ 
++
++/* JX: jx_probe 已停用（原实现裸写 USB-JTAG EP1，会与控制台抢硬件）。
++ * 保留空桩仅用于兼容历史调用点，无任何硬件访问。 */
++void jx_probe(char t)
++{
++  (void)t;
++}
++
+ #ifdef CONFIG_BOARDCTL
+ 
++#ifdef CONFIG_ESP32S3_BOX_LCD
++static int jx_ui_autostart_task(int argc, char *argv[])
++{
++  extern int jx_ui_init(void);
++  extern int jx_ui_page(int n);
++  extern void jx_ui_set_send_cb(void (*cb)(void));
++  extern void jx_ui_send_action(void);
++
++  (void)argc;
++  (void)argv;
++
++  printf("[ui] autostart direct v8\n");
++
++  if (jx_ui_init() == 0)
++    {
++      sleep(2);
++      jx_ui_set_send_cb(jx_ui_send_action);
++      jx_ui_page(0);
++    }
++
++  printf("[ui] autostart task done\n");
++  return 0;
++}
++#endif
++
+ /****************************************************************************
+  * Pre-processor Definitions
+  ****************************************************************************/
+@@ -77,6 +111,7 @@ int board_app_initialize(uintptr_t arg)
+ #else
+   int ret;
+ 
++
+   /* Perform board-specific initialization */
+ 
+   ret = esp32s3_bringup();
+@@ -85,11 +120,28 @@ int board_app_initialize(uintptr_t arg)
+       return ret;
+     }
+ 
++#ifdef CONFIG_ESP32S3_BOX_LCD
++  /* 上电/复位后自动拉起 jixun UI；该任务返回后触摸线程继续驻留。 */
++  {
++    pid_t pid = task_create("jixun-ui", 150, 8192,
++                            jx_ui_autostart_task, NULL);
++
++    if (pid < 0)
++      {
++        _err("ERROR: Failed to start jixun UI: %d\n", pid);
++      }
++  }
++#endif
++
+ #ifdef CONFIG_PLANT_COMPANION
+   /* 开机自启植小伴产品模式 UI（无参数 = 进首屏）。
+    * plant_main 作为独立任务运行，NSH 串口仍可输入调试命令。
+    */
+ 
++  /* 2026-09-13 第13轮（语音第一优先）：不启动 plant UI。
++   * 演示只需 语音 + WiFi；plant 会占堆、抢 CPU、并在 SMP 下把 boot 拖死。
++   * 需要 UI 时把下面 #if 0 改成 #if 1，或在 nsh 里手动敲 `plant`。 */
++#if 0
+   {
+     extern int plant_main(int argc, FAR char *argv[]);
+     pid_t pid;
+@@ -100,6 +152,7 @@ int board_app_initialize(uintptr_t arg)
+         _err("ERROR: Failed to start plant UI: %d\n", pid);
+       }
+   }
++#endif
+ #endif
+ 
+   return OK;
+diff --git a/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_board_lcd_st7789.c b/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_board_lcd_st7789.c
+index 04e90f5e30883d274f405c4bb582a0eaab8d0838..295101913b2f94ba7b297e4988fbab0d95e521af 100644
+--- a/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_board_lcd_st7789.c
++++ b/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_board_lcd_st7789.c
+@@ -1,7 +1,9 @@
+ /****************************************************************************
+  * esp32s3_board_lcd_st7789.c
+  *
+- * Exact IDF ui_main_screen.c ST7796 init sequence + final RED fill.
++ * Spotpear 1.54" 240x240 ST7789 panel (SPI2).
++ * Init sequence mirrors the vendor esp_lcd_st7789 defaults and the
++ * xiaozhi sp-esp32-s3-1.54-muma-a board configuration.
+  ****************************************************************************/
+ 
+ #include <nuttx/config.h>
+@@ -19,72 +21,128 @@
+ #include <nuttx/spi/spi.h>
+ #include <nuttx/lcd/lcd.h>
+ #include <nuttx/lcd/st7789.h>
++#include <nuttx/timers/pwm.h>
+ 
+ #include <arch/board/board.h>
+ 
+ #include "esp32s3_gpio.h"
+ #include "esp32s3_spi.h"
++#include "esp32s3_ledc.h"
+ #include "hardware/esp32s3_gpio_sigmap.h"
+ #include "esp32s3-box.h"
+ 
+ static struct spi_dev_s *g_spidev;
+ static struct lcd_dev_s *g_lcd;
++static struct pwm_lowerhalf_s *g_bckl;
+ 
+-/* ST7796 init commands from xiaozhi-esp32 — proven working on this panel */
+-static const struct {
++/* Backlight: vendor board uses LEDC PWM on GPIO42 with inverted output.
++ * duty=0 keeps the pin low, which is the fully-on state.
++ */
++
++/* 背光：厂商板用 LEDC PWM 驱动 GPIO42，输出反相。
++ * duty=0 时引脚恒低 = 全亮。
++ * 2026-10-26: 照抄 108 定版（已验证能点亮）的实现，不要再用 GPIO 直推。 */
++static void board_backlight_init(uint16_t duty)
++{
++  struct pwm_info_s info;
++
++  g_bckl = esp32s3_ledc_init(0);
++  if (g_bckl == NULL)
++    {
++      printf("lcd: LEDC init FAIL\n");
++      return;
++    }
++
++  if (g_bckl->ops->setup(g_bckl) < 0)
++    {
++      printf("lcd: LEDC setup FAIL\n");
++      return;
++    }
++
++  /* 关键：LEDC 初始化后必须把 GPIO42 配成 OUTPUT|INPUT|PULLUP，
++   * LEDC 的 PWM 信号才出得到引脚。少了这行，引脚保持高电平 = 背光灭。
++   * 2026-10-26: 108 定版能亮、我这版全黑，差的就是这一行。 */
++  esp32s3_configgpio(DISPLAY_BCKL, OUTPUT | INPUT | PULLUP);
++
++  memset(&info, 0, sizeof(info));
++  info.frequency = 1000;
++  info.channels[0].duty = duty;
++  g_bckl->ops->start(g_bckl, &info);
++  printf("lcd: LEDC backlight duty=%u\n", (unsigned)duty);
++}
++
++/* 供 UI 命令现场开关背光：on=1 点亮（duty=0，低电平） */
++void board_lcd_backlight(int on)
++{
++  board_backlight_init(on ? 0 : 0xffff);
++}
++
++/* ST7789 vendor init.  0xBB=0x38 is the value used by the Spotpear
++ * muma-a board (VCOM), do not copy generic 0x19 here.
++ */
++
++static const struct
++{
+   uint8_t cmd;
+   const uint8_t *data;
+   uint8_t len;
+   uint16_t ms;
+-} g_st7796_init[] = {
+-  {0x11, NULL, 0, 120},
+-  {0x3A, (uint8_t[]){0x05}, 1, 0},
+-  {0xB0, (uint8_t[]){0x00, 0xF0}, 2, 0},  /* RAMCTRL: big endian data */
+-  {0xF0, (uint8_t[]){0xC3}, 1, 0},
+-  {0xF0, (uint8_t[]){0x96}, 1, 0},
+-  {0xB4, (uint8_t[]){0x01}, 1, 0},
+-  {0xB7, (uint8_t[]){0xC6}, 1, 0},
+-  {0xC0, (uint8_t[]){0x80, 0x45}, 2, 0},
+-  {0xC1, (uint8_t[]){0x13}, 1, 0},
+-  {0xC2, (uint8_t[]){0xA7}, 1, 0},
+-  {0xC5, (uint8_t[]){0x0A}, 1, 0},
+-  {0xE8, (uint8_t[]){0x40,0x8A,0x00,0x00,0x29,0x19,0xA5,0x33}, 8, 0},
+-  {0xE0, (uint8_t[]){0xD0,0x08,0x0F,0x06,0x06,0x33,0x30,0x33,0x47,0x17,0x13,0x13,0x2B,0x31}, 14, 0},
+-  {0xE1, (uint8_t[]){0xD0,0x0A,0x11,0x0B,0x09,0x07,0x2F,0x33,0x47,0x38,0x15,0x16,0x2C,0x32}, 14, 0},
+-  {0xF0, (uint8_t[]){0x3C}, 1, 0},
+-  {0xF0, (uint8_t[]){0x69}, 1, 120},
+-  {0x29, NULL, 0, 0},
++} g_st7789_init[] =
++{
++  {0x11, NULL, 0, 120},                                    /* Sleep out */
++  {0xB2, (uint8_t[]){0x0C, 0x0C, 0x00, 0x33, 0x33}, 5, 0}, /* Porch */
++  {0xB7, (uint8_t[]){0x35}, 1, 0},                         /* Gate */
++  {0xBB, (uint8_t[]){0x19}, 1, 0},                         /* VCOM */
++  {0xC0, (uint8_t[]){0x2C}, 1, 0},                         /* LCM */
++  {0xC2, (uint8_t[]){0x01}, 1, 0},                         /* VDV/VRH */
++  {0xC3, (uint8_t[]){0x12}, 1, 0},                         /* VDV */
++  {0xC4, (uint8_t[]){0x20}, 1, 0},                         /* VDV */
++  {0xC6, (uint8_t[]){0x0F}, 1, 0},                         /* 60 Hz */
++  {0xD0, (uint8_t[]){0xA4, 0xA1}, 2, 0},                   /* Power */
++  {0xE0, (uint8_t[]){0xD0,0x04,0x0D,0x11,0x13,0x2B,0x3F,0x54,
++                     0x4C,0x18,0x0D,0x0B,0x1F,0x23}, 14, 0},
++  {0xE1, (uint8_t[]){0xD0,0x04,0x0C,0x11,0x13,0x2C,0x3F,0x44,
++                     0x51,0x2F,0x1F,0x1F,0x20,0x23}, 14, 0},
++  {0x3a, (uint8_t[]){0x55}, 1, 0},                         /* COLMOD 16bpp */
++  {0x21, NULL, 0, 0},                                      /* Invert on */
++  {0x29, NULL, 0, 0},                                      /* Display on */
+ };
+ 
+ int board_lcd_initialize(void)
+ {
+-  printf("lcd: ST7796 full init + RED fill\n");
++  printf("lcd: ST7789 240x240 init\n");
+ 
+-  /* GPIO init */
+   esp32s3_configgpio(DISPLAY_DC, OUTPUT);
+   esp32s3_configgpio(DISPLAY_RST, OUTPUT);
+-  esp32s3_configgpio(DISPLAY_BCKL, OUTPUT);
++  board_backlight_init(0);
++
++  /* These pads do not default to SIG_GPIO_OUT_IDX in the GPIO matrix.
++   * Without an explicit route, esp32s3_gpiowrite() has no effect on the pad.
++   */
++
++  esp32s3_gpio_matrix_out(DISPLAY_DC, SIG_GPIO_OUT_IDX, false, false);
++  esp32s3_gpio_matrix_out(DISPLAY_RST, SIG_GPIO_OUT_IDX, false, false);
++
++  nxsig_usleep(5 * 1000);
+ 
+-  /* Hard reset */
+   esp32s3_gpiowrite(DISPLAY_RST, false);
+-  nxsig_usleep(10 * 1000);
++  nxsig_usleep(20 * 1000);
+   esp32s3_gpiowrite(DISPLAY_RST, true);
+-  nxsig_usleep(10 * 1000);
+-
+-  /* Backlight ON */
+-  esp32s3_gpiowrite(DISPLAY_BCKL, true);
++  nxsig_usleep(120 * 1000);
+ 
+-  /* SPI init */
+   g_spidev = esp32s3_spibus_initialize(DISPLAY_SPI);
+-  if (!g_spidev) { printf("lcd: SPI FAIL\n"); return -ENODEV; }
++  if (!g_spidev)
++    {
++      printf("lcd: SPI FAIL\n");
++      return -ENODEV;
++    }
+ 
+-  /* Send all 17 ST7796 init commands */
+-  for (int i = 0; i < sizeof(g_st7796_init) / sizeof(g_st7796_init[0]); i++)
++  for (int i = 0; i < sizeof(g_st7789_init) / sizeof(g_st7789_init[0]); i++)
+     {
+-      const uint8_t cmd = g_st7796_init[i].cmd;
+-      const uint8_t *data = g_st7796_init[i].data;
+-      const uint8_t len = g_st7796_init[i].len;
+-      const uint16_t ms = g_st7796_init[i].ms;
++      const uint8_t cmd = g_st7789_init[i].cmd;
++      const uint8_t *data = g_st7789_init[i].data;
++      const uint8_t len = g_st7789_init[i].len;
++      const uint16_t ms = g_st7789_init[i].ms;
+ 
+       SPI_LOCK(g_spidev, true);
+       SPI_SETMODE(g_spidev, SPIDEV_MODE0);
+@@ -107,15 +165,44 @@ int board_lcd_initialize(void)
+         nxsig_usleep(ms * 1000);
+     }
+ 
+-  printf("lcd: ST7796 init complete\n");
+-
+-  /* Now init ST7789 driver for LVGL.
+-   * The driver sends its own MADCTL (0x28 = MV+BGR, matching IDF swap_xy+BGR)
+-   * and does a test RED fill via st7789_lcdinitialize() → st7789_fill(). */
++  printf("lcd: ST7789 init complete\n");
+ 
+   g_lcd = st7789_lcdinitialize(g_spidev);
+-  if (!g_lcd) { printf("lcd: driver FAIL\n"); return -ENODEV; }
++  if (!g_lcd)
++    {
++      printf("lcd: driver FAIL\n");
++      return -ENODEV;
++    }
+ 
++  board_backlight_init(0);
++
++  {
++    struct lcd_planeinfo_s pinfo;
++    static uint16_t line[240];
++    static const uint16_t colors[4] = {0xf800, 0x07e0, 0x001f, 0xffff};
++
++    if (g_lcd->getplaneinfo(g_lcd, 0, &pinfo) == 0 && pinfo.putarea != NULL)
++      {
++        for (int c = 0; c < 4; c++)
++          {
++            for (int i = 0; i < 240; i++)
++              {
++                line[i] = colors[c];
++              }
++
++            for (int y = 0; y < 240; y++)
++              {
++                pinfo.putarea(pinfo.dev, y, y, 0, 239,
++                              (FAR const uint8_t *)line, 480);
++              }
++
++            printf("[lcd] color %d done\n", c);
++            nxsig_usleep(400 * 1000);
++          }
++      }
++  }
++
++  printf("[lcd] BCKL LEDC duty=0 (LOW, active-low = ON)\n");
+   printf("lcd: ready\n");
+   return OK;
+ }
+@@ -127,5 +214,8 @@ struct lcd_dev_s *board_lcd_getdev(int devno)
+ 
+ void board_lcd_uninitialize(void)
+ {
+-  if (g_lcd) g_lcd->setpower(g_lcd, 0);
++  if (g_lcd)
++    {
++      g_lcd->setpower(g_lcd, 0);
++    }
+ }
+diff --git a/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_board_spi.c b/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_board_spi.c
+index eaed30b67cffebd29b011d9a536b39e777c58b4d..8e5851db65df35b9c6e78f330317238eb1e7c34f 100644
+--- a/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_board_spi.c
++++ b/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_board_spi.c
+@@ -119,10 +119,8 @@ int esp32s3_spi3_cmddata(struct spi_dev_s *dev, uint32_t devid, bool cmd)
+       return OK;
+     }
+ 
+-  spiinfo("devid: %" PRIu32 " CMD: %s\n", devid, cmd ? "command" :
+-          "data");
+-
+-  return -ENODEV;
++  /* 非 LCD 设备（如 LoRa）没有 DC 脚，直接放行，避免 spi_transfer 中断 */
++  return OK;
+ }
+ 
+ #endif
+diff --git a/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_board_touchsceen_gt911.c b/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_board_touchsceen_gt911.c
+index 7011863374afbeb499b7dabff84b8d8801eb30cd..873420c0bfb9d54916765274f566ec0f50cf4d35 100644
+--- a/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_board_touchsceen_gt911.c
++++ b/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_board_touchsceen_gt911.c
+@@ -32,6 +32,7 @@
+ #include <errno.h>
+ #include <debug.h>
+ #include <string.h>
++#include <nuttx/kmalloc.h>
+ #include <nuttx/spinlock.h>
+ #include <nuttx/wqueue.h>
+ #include <nuttx/input/touchscreen.h>
+@@ -84,6 +85,15 @@ struct gt911_dev_s
+   spinlock_t          lock;                 /* Device specific lock. */
+ 
+   uint8_t buffer[GT911_BUFFER_SIZE];        /* Read buffer */
++
++  /* Diag counters (read-only debug; flat build app calls gt911_diag_snapshot) */
++  uint32_t            diag_polls;           /* worker polls */
++  uint32_t            diag_i2c_err;         /* I2C transfer failures */
++  uint32_t            diag_down;            /* TOUCH_DOWN samples sent */
++  uint32_t            diag_up;              /* TOUCH_UP samples sent */
++  uint8_t             diag_last_status;     /* last 0x814E status byte */
++  uint16_t            diag_last_x;          /* last mapped x */
++  uint16_t            diag_last_y;          /* last mapped y */
+ };
+ 
+ /* This structure describes the frame of touchpoint */
+@@ -114,7 +124,9 @@ begin_packed_struct struct gt911_data_s
+  * Private Data
+  ****************************************************************************/
+ 
+-struct gt911_dev_s g_gt911_dev;
++/* dram0_0_seg 已无余量：设备状态放内核堆（本板 common heap 含 PSRAM），
++ * 文件作用域只保留一个指针。 */
++static struct gt911_dev_s *g_gt911_dev;
+ 
+ /****************************************************************************
+  * Private Functions
+@@ -309,10 +321,15 @@ static void gt911_touch_event(struct gt911_dev_s *dev)
+   point->pressure  = tp->pressure;
+   point->flags     = TOUCH_POS_VALID | TOUCH_PRESSURE_VALID;
+ 
++  dev->diag_last_status = data->buffer_status;
++  dev->diag_last_x      = point->x;
++  dev->diag_last_y      = point->y;
++
+   if (data->buffer_status)
+     {
+       point->flags |= TOUCH_DOWN;
+       dev->has_report = true;
++      dev->diag_down++;
+ 
+       /* ⚠️ 2026-08-21：删掉 [Touch] down 调试 printf——每个触摸事件都打印
+        * 会刷爆 USB-Serial-JTAG 控制台（与音频调试输出交错成乱码，且大量
+@@ -322,6 +339,7 @@ static void gt911_touch_event(struct gt911_dev_s *dev)
+     {
+       point->flags |= TOUCH_UP;
+       dev->has_report = false;
++      dev->diag_up++;
+     }
+ 
+   touch_event(dev->touch_lower.priv, sample);
+@@ -377,10 +395,13 @@ static void gt911_worker(void *arg)
+   clock_t delay = GT911_WORK_DELAY;
+   bool touched = false;
+ 
++  dev->diag_polls++;
++
+   ret = gt911_read_reg(dev, GT911_READ_XY_REG, dev->buffer, 1);
+   if (ret != 0)
+     {
+       ierr("ERROR: I2C_TRANSFER() failed: %d\n", ret);
++      dev->diag_i2c_err++;
+       goto exit;
+     }
+ 
+@@ -393,6 +414,7 @@ static void gt911_worker(void *arg)
+       if (ret != 0)
+         {
+           ierr("ERROR: I2C_TRANSFER() failed: %d\n", ret);
++          dev->diag_i2c_err++;
+           goto exit;
+         }
+ 
+@@ -407,6 +429,7 @@ static void gt911_worker(void *arg)
+   if (ret != 0)
+     {
+       ierr("ERROR: I2C_TRANSFER() failed: %d\n", ret);
++      dev->diag_i2c_err++;
+       goto exit;
+     }
+ 
+@@ -428,6 +451,67 @@ exit:
+  * Public Functions
+  ****************************************************************************/
+ 
++/****************************************************************************
++ * Name: gt911_diag_snapshot
++ *
++ * Description:
++ *   Debug helper (flat build): snapshot GT911 driver counters for the UI
++ *   app to correlate producer/consumer liveness.  Array layout:
++ *     [0]=polls [1]=i2c_err [2]=down [3]=up [4]=last_status
++ *     [5]=last_x [6]=last_y [7]=has_report
++ *
++ ****************************************************************************/
++
++int gt911_diag_snapshot(uint32_t out[8])
++{
++  struct gt911_dev_s *dev = g_gt911_dev;
++
++  if (out == NULL)
++    {
++      return -EINVAL;
++    }
++
++  if (dev == NULL)
++    {
++      return -ENODEV;
++    }
++
++  out[0] = dev->diag_polls;
++  out[1] = dev->diag_i2c_err;
++  out[2] = dev->diag_down;
++  out[3] = dev->diag_up;
++  out[4] = dev->diag_last_status;
++  out[5] = dev->diag_last_x;
++  out[6] = dev->diag_last_y;
++  out[7] = dev->has_report ? 1u : 0u;
++  return 0;
++}
++
++int gt911_diag_probe(uint8_t out[8])
++{
++  struct gt911_dev_s *dev = g_gt911_dev;
++  int ret;
++
++  if (out == NULL)
++    {
++      return -EINVAL;
++    }
++
++  memset(out, 0, 8);
++  if (dev == NULL || dev->i2c == NULL)
++    {
++      return -ENODEV;
++    }
++
++  ret = gt911_read_reg(dev, GT911_PRODUCT_ID_REG, &out[0], 4);
++  if (ret < 0)
++    {
++      return ret;
++    }
++
++  return gt911_read_reg(dev, GT911_READ_XY_REG, &out[4], 1);
++}
++
+ /****************************************************************************
+  * Name: board_touchscreen_initialize
+  *
+@@ -441,11 +525,21 @@ exit:
+  *   Zero (OK) on success; a negated errno value on failure.
+  *
+  ****************************************************************************/
+-
+ int board_touchscreen_initialize(void)
+ {
+   int ret;
+-  struct gt911_dev_s *dev = &g_gt911_dev;
++  struct gt911_dev_s *dev;
++
++  if (g_gt911_dev == NULL)
++    {
++      g_gt911_dev = (struct gt911_dev_s *)kmm_zalloc(sizeof(*g_gt911_dev));
++      if (g_gt911_dev == NULL)
++        {
++          return -ENOMEM;
++        }
++    }
++
++  dev = g_gt911_dev;
+ 
+   /* Step 1: Reset+INT sequence to set I2C address
+    * According to GT911 datasheet:
+diff --git a/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_boot.c b/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_boot.c
+index 065a456e227ee4caf3054c7f23e3f221138007cd..e6622e2a20cdece5c499ceca1af523813f9852de 100644
+--- a/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_boot.c
++++ b/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_boot.c
+@@ -27,6 +27,8 @@
+ #include <nuttx/config.h>
+ 
+ #include <debug.h>
++#include <sched.h>
++#include <unistd.h>
+ 
+ #include <nuttx/board.h>
+ #include <nuttx/mm/mm.h>
+@@ -46,6 +48,42 @@
+  * Public Functions
+  ****************************************************************************/
+ 
++#if defined(CONFIG_BOARD_LATE_INITIALIZE) && defined(CONFIG_ESP32S3_BOX_LCD)
++static int jx_ui_autostart_task(int argc, char *argv[])
++{
++  extern int jx_ui_init(void);
++  extern int jx_ui_page(int n);
++  extern void jx_ui_set_send_cb(void (*cb)(void));
++  extern void jx_ui_send_action(void);
++
++  (void)argc;
++  (void)argv;
++
++  printf("[ui] autostart direct v7\n");
++
++  if (jx_ui_init() == 0)
++    {
++      sleep(2);
++      jx_ui_set_send_cb(jx_ui_send_action);
++      jx_ui_page(0);
++    }
++
++  printf("[ui] autostart task done\n");
++  return 0;
++}
++
++static void jx_ui_autostart(void)
++{
++  int pid;
++
++  pid = task_create("jixun-ui", 150, 8192, jx_ui_autostart_task, NULL);
++  if (pid < 0)
++    {
++      _err("ERROR: Failed to start jixun UI: %d\n", pid);
++    }
++}
++#endif
++
+ /****************************************************************************
+  * Name: esp32s3_board_initialize
+  *
+@@ -81,5 +119,9 @@ void board_late_initialize(void)
+   /* Perform board-specific initialization */
+ 
+   esp32s3_bringup();
++
++#if defined(CONFIG_BOARD_LATE_INITIALIZE) && defined(CONFIG_ESP32S3_BOX_LCD)
++  jx_ui_autostart();
++#endif
+ }
+ #endif
+diff --git a/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_bringup.c b/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_bringup.c
+index de2cabcd44a2140ae9c0b420ef34d4697f253636..5e884357cca243faac29d00124aaa976be9f5ecc 100644
+--- a/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_bringup.c
++++ b/boards/xtensa/esp32s3/esp32s3-box/src/esp32s3_bringup.c
+@@ -80,6 +80,8 @@
+ #  include "esp32s3_spi.h"
+ #endif
+ 
++#include "esp32s3_board_spidev.h"
++
+ #ifdef CONFIG_LCD_DEV
+ #  include <nuttx/board.h>
+ #  include <nuttx/lcd/lcd_dev.h>
+@@ -202,6 +204,13 @@ int esp32s3_bringup(void)
+       syslog(LOG_ERR, "ERROR: Failed to initialize SPI Flash\n");
+     }
+ #endif
++#ifdef CONFIG_ESP32S3_SPI3
++  ret = board_spidev_initialize(ESP32S3_SPI3);
++  if (ret < 0)
++    {
++      syslog(LOG_ERR, "ERROR: Failed to initialize SPI3: %d\n", ret);
++    }
++#endif
+ 
+ #ifdef CONFIG_ESP32S3_SDMMC
+   ret = board_sdmmc_initialize();
+@@ -240,9 +249,22 @@ int esp32s3_bringup(void)
+ 
+ #endif
+ 
++#ifdef CONFIG_ESP32S3_BOARD_TOUCHSCREEN
++  /* LCD and GT911 share GPIO48 as their reset line on ESP32-S3-BOX.
++   * Initialize touch first so its reset pulse cannot put the already
++   * initialized display back into sleep mode.  LCD is initialized last.
++   */
++  ret = board_touchscreen_initialize();
++  if (ret < 0)
++    {
++      syslog(LOG_ERR, "Failed to initialize touchscreen driver\n");
++    }
++#endif
++
+ #ifdef CONFIG_ESP32S3_BOX_LCD
+   /* 2026-08-21 实验结论：禁用 LCD 后 68.7Hz 脉冲反而增大（8640 vs 675
+-   * 大值）——LCD 非噪声源，恢复正常初始化。 */
++   * 大值）——LCD 非噪声源，恢复正常初始化。
++   * GPIO48 is shared with touch reset: keep this after touch init. */
+   ret = board_lcd_initialize();
+   if (ret < 0)
+     {
+@@ -256,14 +278,6 @@ int esp32s3_bringup(void)
+     }
+ #endif
+ 
+-#ifdef CONFIG_ESP32S3_BOARD_TOUCHSCREEN
+-  ret = board_touchscreen_initialize();
+-  if (ret < 0)
+-    {
+-      syslog(LOG_ERR, "Failed to initialize touchscreen driver\n");
+-    }
+-#endif
+-
+ #ifdef CONFIG_ESP32S3_ADC
+   ret = board_adc_init();
+   if (ret < 0)
+diff --git a/drivers/lcd/st7789.c b/drivers/lcd/st7789.c
+index 46bc6bb8f94296057c628628bd742c2b5e9fdb49..3b006edc647534215e4dbf760de5dc68045b8ea1 100644
+--- a/drivers/lcd/st7789.c
++++ b/drivers/lcd/st7789.c
+@@ -36,15 +36,15 @@
+ #include <debug.h>
+ 
+ #include <nuttx/arch.h>
++
+ #include <nuttx/spi/spi.h>
+ #include <nuttx/lcd/lcd.h>
+ #include <nuttx/lcd/st7789.h>
+ 
+ #include "st7789.h"
+ 
+-/* ESP32-S3 register access for debugging */
+-
+-#include <nuttx/arch.h>
++/* ESP32-S3 SPI CS keep-active: NuttX SPI_SEND drops CS between bytes,
++ * which makes ST7789 exit RAMWR.  The register below is forced to keep CS. */
+ 
+ /* ESP32-S3 SPI2 base: 0x60024000 (NOT 0x60005000!)
+  * MISC offset: 0x20, bit 30: CS_KEEP_ACTIVE
+@@ -235,7 +235,7 @@ struct st7789_dev_s
+ uint16_t rowbuff[ST7789_XRES * ST7789_BYTESPP];
+ #else
+ /* 非 3WIRE 路径的字节交换缓冲：面板大端，每像素高低字节互换后再发 */
+-uint8_t rowbuff_be[ST7789_XRES * ST7789_BYTESPP];
++uint8_t rowbuff_be[4096];   /* 4KB swap buffer: fewer/larger DMA blocks */
+ #endif
+ 
+ /****************************************************************************
+@@ -263,6 +263,11 @@ static void st7789_bpp(FAR struct st7789_dev_s *dev, int bpp);
+ static void st7789_wrram(FAR struct st7789_dev_s *dev,
+                          FAR const uint8_t *buff, size_t size, size_t skip,
+                          size_t count);
++static void st7789_area_wrram(FAR struct st7789_dev_s *dev,
++                              uint16_t x0, uint16_t y0,
++                              uint16_t x1, uint16_t y1,
++                              FAR const uint8_t *buff, size_t size,
++                              size_t skip, size_t count);
+ #ifndef CONFIG_LCD_NOGETRUN
+ static void st7789_rdram(FAR struct st7789_dev_s *dev,
+                          FAR uint16_t *buff, size_t size);
+@@ -682,26 +687,40 @@ static void st7789_wrram(FAR struct st7789_dev_s *dev,
+     }
+ #else
+ 
+-  /* ST7789/ST7796 panel is BIG-ENDIAN (RAMCTL=0xF0, IDF: "Use big endian
+-   * by default"): the HIGH byte of each 16-bit pixel must be sent first.
+-   * LVGL's draw buffer is little-endian (low byte first), so every
+-   * 2-byte pixel must be swapped before SPI_SNDBLOCK — exactly what the
+-   * IDF does ("because SPI LCD is big-endian, we need to swap the RGB
+-   * bytes order").  The 3WIRE path already swaps; the non-3WIRE path was
+-   * missing it, so every pixel reached the panel byte-swapped:
+-   * red->blue, green->red, blue->green (confirmed by `plant img test`). */
+-
+-  for (i = 0; i < count; i++)
++  /* ST7789/ST7796 panel is BIG-ENDIAN (RAMCTL=0xF0, IDF: "Use big
++   * endian by default"): the HIGH byte of each 16-bit pixel must be
++   * sent first.  LVGL's draw buffer is little-endian (low byte first),
++   * so every 2-byte pixel must be swapped before SPI_SNDBLOCK --
++   * exactly what the IDF does.  Since 2026-09-08 the swap+send is
++   * chunked through rowbuff_be (instead of one pass over the whole
++   * buffer), so PUTAREA may hand over arbitrarily large contiguous
++   * areas (e.g. a whole preview frame in one call) without ever
++   * overflowing the working buffer.  CS stays asserted across chunk
++   * boundaries, so the panel remains in RAMWR. */
++    for (i = 0; i < count; i++)
+     {
+       FAR const uint8_t *src = buff + (i * (size + skip));
++      size_t left = size;
+ 
+-      for (j = 0; j + 1 < size; j += 2)
++      while (left > 0)
+         {
+-          rowbuff_be[j]     = src[j + 1];
+-          rowbuff_be[j + 1] = src[j];
++          size_t now = left;
++
++          if (now > sizeof(rowbuff_be))
++            {
++              now = sizeof(rowbuff_be);
++            }
++
++          for (j = 0; j + 1 < now; j += 2)
++            {
++              rowbuff_be[j]     = src[j + 1];
++              rowbuff_be[j + 1] = src[j];
++            }
++
++          SPI_SNDBLOCK(dev->spi, rowbuff_be, now);
++          src += now;
++          left -= now;
+         }
+-
+-      SPI_SNDBLOCK(dev->spi, rowbuff_be, size);
+     }
+ #endif
+ 
+@@ -709,6 +728,105 @@ static void st7789_wrram(FAR struct st7789_dev_s *dev,
+   SPI_LOCK(dev->spi, false);
+ }
+ 
++/* Combined set-area + RAMWR + data.  ST7796 exits RAMWR when CS rises, so
++ * the address setup and pixel stream must stay in one CS assertion.  Keep
++ * the older split helpers for getrun and other read paths. */
++#ifdef CONFIG_LCD_ST7789_3WIRE
++static void st7789_area_wrram(FAR struct st7789_dev_s *dev,
++                              uint16_t x0, uint16_t y0,
++                              uint16_t x1, uint16_t y1,
++                              FAR const uint8_t *buff, size_t size,
++                              size_t skip, size_t count)
++{
++  st7789_setarea(dev, x0, y0, x1, y1);
++  st7789_wrram(dev, buff, size, skip, count);
++}
++#else
++static void st7789_area_wrram(FAR struct st7789_dev_s *dev,
++                              uint16_t x0, uint16_t y0,
++                              uint16_t x1, uint16_t y1,
++                              FAR const uint8_t *buff, size_t size,
++                              size_t skip, size_t count)
++{
++  size_t i;
++
++  SPI_LOCK(dev->spi, true);
++  SPI_SETMODE(dev->spi, CONFIG_LCD_ST7789_SPIMODE);
++  SPI_SETBITS(dev->spi, LCD_ST7789_SPI_BITS);
++  SPI_SETFREQUENCY(dev->spi, CONFIG_LCD_ST7789_FREQUENCY);
++  SPI_SELECT(dev->spi, SPIDEV_DISPLAY(0), true);
++  esp32s3_set_cs_keep_active();
++
++  /* Row address (RASET) */
++  SPI_CMDDATA(dev->spi, SPIDEV_DISPLAY(0), true);
++  SPI_SEND(dev->spi, ST7789_RASET);
++  SPI_CMDDATA(dev->spi, SPIDEV_DISPLAY(0), false);
++#ifdef CONFIG_LCD_DYN_ORIENTATION
++  SPI_SEND(dev->spi, (y0 + g_lcddev.yoff) >> 8);
++  SPI_SEND(dev->spi, (y0 + g_lcddev.yoff) & 0xff);
++  SPI_SEND(dev->spi, (y1 + g_lcddev.yoff) >> 8);
++  SPI_SEND(dev->spi, (y1 + g_lcddev.yoff) & 0xff);
++#else
++  SPI_SEND(dev->spi, (y0 + ST7789_YOFFSET) >> 8);
++  SPI_SEND(dev->spi, (y0 + ST7789_YOFFSET) & 0xff);
++  SPI_SEND(dev->spi, (y1 + ST7789_YOFFSET) >> 8);
++  SPI_SEND(dev->spi, (y1 + ST7789_YOFFSET) & 0xff);
++#endif
++
++  /* Column address (CASET) */
++  SPI_CMDDATA(dev->spi, SPIDEV_DISPLAY(0), true);
++  SPI_SEND(dev->spi, ST7789_CASET);
++  SPI_CMDDATA(dev->spi, SPIDEV_DISPLAY(0), false);
++#ifdef CONFIG_LCD_DYN_ORIENTATION
++  SPI_SEND(dev->spi, (x0 + g_lcddev.xoff) >> 8);
++  SPI_SEND(dev->spi, (x0 + g_lcddev.xoff) & 0xff);
++  SPI_SEND(dev->spi, (x1 + g_lcddev.xoff) >> 8);
++  SPI_SEND(dev->spi, (x1 + g_lcddev.xoff) & 0xff);
++#else
++  SPI_SEND(dev->spi, (x0 + ST7789_XOFFSET) >> 8);
++  SPI_SEND(dev->spi, (x0 + ST7789_XOFFSET) & 0xff);
++  SPI_SEND(dev->spi, (x1 + ST7789_XOFFSET) >> 8);
++  SPI_SEND(dev->spi, (x1 + ST7789_XOFFSET) & 0xff);
++#endif
++
++  /* RAM write and pixel data, still under the same CS assertion */
++  SPI_CMDDATA(dev->spi, SPIDEV_DISPLAY(0), true);
++  SPI_SEND(dev->spi, ST7789_RAMWR);
++  SPI_CMDDATA(dev->spi, SPIDEV_DISPLAY(0), false);
++
++  for (i = 0; i < count; i++)
++    {
++      FAR const uint8_t *src = buff + (i * (size + skip));
++      size_t left = size;
++
++      while (left > 0)
++        {
++          size_t now = left;
++          size_t j;
++
++          if (now > sizeof(rowbuff_be))
++            {
++              now = sizeof(rowbuff_be);
++            }
++
++          for (j = 0; j + 1 < now; j += 2)
++            {
++              rowbuff_be[j]     = src[j + 1];
++              rowbuff_be[j + 1] = src[j];
++            }
++
++          SPI_SNDBLOCK(dev->spi, rowbuff_be, now);
++          src += now;
++          left -= now;
++        }
++    }
++
++  esp32s3_clr_cs_keep_active();
++  st7789_deselect(dev->spi);
++  SPI_LOCK(dev->spi, false);
++}
++#endif
++
+ /****************************************************************************
+  * Name: st7789_rdram
+  *
+@@ -826,8 +944,8 @@ static int st7789_putrun(FAR struct lcd_dev_s *dev,
+   ginfo("row: %d col: %d npixels: %d\n", row, col, npixels);
+   DEBUGASSERT(buffer && ((uintptr_t)buffer & 1) == 0);
+ 
+-  st7789_setarea(priv, col, row, col + npixels - 1, row);
+-  st7789_wrram(priv, buffer, npixels * ST7789_BYTESPP, 0, 1);
++  st7789_area_wrram(priv, col, row, col + npixels - 1, row,
++                    buffer, npixels * ST7789_BYTESPP, 0, 1);
+ 
+   return OK;
+ }
+@@ -867,8 +985,6 @@ static int st7789_putarea(FAR struct lcd_dev_s *dev,
+ 
+   DEBUGASSERT(buffer && ((uintptr_t)buffer & 1) == 0);
+ 
+-  st7789_setarea(priv, col_start, row_start, col_end, row_end);
+-
+   /* If the stride is the same of the row, a single SPI transfer is enough.
+    * That is always true for lcddev. For framebuffer, that indicates a full
+    * screen or full row update.
+@@ -879,14 +995,16 @@ static int st7789_putarea(FAR struct lcd_dev_s *dev,
+       /* simpler case, we can just send the whole buffer */
+ 
+       ginfo("Using full screen/full row mode\n");
+-      st7789_wrram(priv, buffer, rows * row_size, 0, 1);
++      st7789_area_wrram(priv, col_start, row_start, col_end, row_end,
++                        buffer, rows * row_size, 0, 1);
+     }
+   else
+     {
+       /* We have to go row by row */
+ 
+       ginfo("Falling-back to row by row mode\n");
+-      st7789_wrram(priv, buffer, row_size, stride - row_size, rows);
++      st7789_area_wrram(priv, col_start, row_start, col_end, row_end,
++                        buffer, row_size, stride - row_size, rows);
+     }
+ 
+   return OK;
+diff --git a/drivers/serial/serial.c b/drivers/serial/serial.c
+index 0b530d1d68627e04ac81ea98ec24125251256140..436c3014ba6de3187483afc06b24c354f48e4207 100644
+--- a/drivers/serial/serial.c
++++ b/drivers/serial/serial.c
+@@ -229,6 +229,49 @@ static void uart_poll_notify(FAR uart_dev_t *dev, unsigned int min,
+  * Name: uart_putxmitchar
+  ****************************************************************************/
+ 
++/* 2026-10-30: set once the USB host stopped draining the serial port.
++ * While it is set we discard bytes instead of blocking, so a chatty
++ * printf (e.g. PCM dump) can never wedge the scheduler or freeze the UI. */
++
++static int g_tx_stalled;
++static clock_t g_tx_stall_since;
++
++/* 2026-10-30: the drop latch is time-boxed.  Some controllers (USB CDC)
++ * report xmit.size == 0, so buffer occupancy cannot be used to clear it.
++ * Retry once per second instead, otherwise the console would stay dead
++ * forever after the host stops reading once.
++ */
++
++static bool tx_should_drop(FAR uart_dev_t *dev)
++{
++  if (!g_tx_stalled)
++    {
++      return false;
++    }
++
++  if (dev->xmit.size > 0)
++    {
++      int used = (dev->xmit.head + dev->xmit.size - dev->xmit.tail) %
++                 dev->xmit.size;
++
++      if (used < dev->xmit.size / 2)
++        {
++          g_tx_stalled = 0;
++          return false;
++        }
++
++      return true;
++    }
++
++  if (clock_systime_ticks() - g_tx_stall_since < TICK_PER_SEC)
++    {
++      return true;
++    }
++
++  g_tx_stalled = 0;
++  return false;
++}
++
+ static int uart_putxmitchar(FAR uart_dev_t *dev, int ch, bool oktoblock)
+ {
+   irqstate_t flags;
+@@ -267,6 +310,11 @@ static int uart_putxmitchar(FAR uart_dev_t *dev, int ch, bool oktoblock)
+ 
+       else if (oktoblock)
+         {
++          if (tx_should_drop(dev))
++            {
++              return OK;   /* host still not reading: drop byte */
++            }
++
+           /* The following steps must be atomic with respect to serial
+            * interrupt handling.
+            */
+@@ -316,13 +364,27 @@ static int uart_putxmitchar(FAR uart_dev_t *dev, int ch, bool oktoblock)
+ #endif
+               uart_enabletxint(dev);
+               uart_spinunlock(dev, true, flags);
+-              ret = nxsem_wait(&dev->xmitsem);
++              ret = nxsem_tickwait_uninterruptible(&dev->xmitsem,
++                                                   MSEC2TICK(20));
+               flags = uart_spinlock(dev, true);
+               uart_disabletxint(dev);
+             }
+ 
+           uart_spinunlock(dev, true, flags);
+ 
++          /* 2026-10-30: host not reading.  Latch drop mode and discard
++           * this byte; do NOT touch xmit.tail here (the TX ISR owns it
++           * and we are outside the lock).  The latch clears itself once
++           * the buffer drains below half, so the console works again as
++           * soon as a terminal is opened. */
++
++          if (ret == -ETIMEDOUT)
++            {
++              g_tx_stalled = 1;
++              g_tx_stall_since = clock_systime_ticks();
++              return OK;
++            }
++
+ #ifdef CONFIG_SERIAL_REMOVABLE
+           /* Check if the removable device was disconnected while we were
+            * waiting.
+@@ -372,10 +434,27 @@ static inline void uart_putchars(FAR uart_dev_t *dev,
+ {
+   FAR const char *pbuf = buf;
+ 
++  /* 2026-10-30: once the host stopped reading, discard the whole run.
++   * Without this every single character burned a full spin budget here
++   * (1e6 iterations), so one PCM dump line took seconds and the board
++   * looked dead while it was merely chewing the console. */
++
++  if (tx_should_drop(dev))
++    {
++      return;
++    }
++
+   while (len > 0)
+     {
++      int txspin = 0;
+       while (!uart_txready(dev))
+         {
++          if (++txspin > 200000)
++            {
++              g_tx_stalled = 1;
++              g_tx_stall_since = clock_systime_ticks();
++              return;
++            }
+         }
+ 
+       if (dev->ops->sendbuf)
+@@ -526,7 +605,8 @@ static int uart_tcdrain(FAR uart_dev_t *dev,
+ #endif
+               uart_enabletxint(dev);
+               uart_spinunlock(dev, true, flags);
+-              ret = nxsem_wait(&dev->xmitsem);
++              ret = nxsem_tickwait_uninterruptible(&dev->xmitsem,
++                                                   MSEC2TICK(200));
+               flags = uart_spinlock(dev, true);
+               uart_disabletxint(dev);
+             }
+diff --git a/fs/littlefs/Make.defs b/fs/littlefs/Make.defs
+index 8eb7f2be3eecc22a26f5d22688cfd034e8ad217d..a8bdcbce9b136c25997df25f652ed48b2f6f63d2 100644
+--- a/fs/littlefs/Make.defs
++++ b/fs/littlefs/Make.defs
+@@ -51,7 +51,7 @@ LITTLEFS_VERSION ?= 2.5.1
+ LITTLEFS_TARBALL = v$(LITTLEFS_VERSION).tar.gz
+ 
+ $(LITTLEFS_TARBALL):
+-	$(call DOWNLOAD,https://github.com/ARMmbed/littlefs/archive,$(LITTLEFS_TARBALL),littlefs/$(LITTLEFS_TARBALL))
++	$(call DOWNLOAD,https://ghproxy.net/https://github.com/ARMmbed/littlefs/archive,$(LITTLEFS_TARBALL),littlefs/$(LITTLEFS_TARBALL))
+ 
+ .littlefsunpack: $(LITTLEFS_TARBALL)
+ 	$(Q) tar zxf littlefs/$(LITTLEFS_TARBALL) -C littlefs
+diff --git a/libs/libc/audio/lib_buffer.c b/libs/libc/audio/lib_buffer.c
+index df6d7893fb071811e88a4475826aa2ed0881416e..7cf0f27a7ce8e500442e93c79ba45bb6b400c930 100644
+--- a/libs/libc/audio/lib_buffer.c
++++ b/libs/libc/audio/lib_buffer.c
+@@ -69,7 +69,7 @@ int apb_alloc(FAR struct audio_buf_desc_s *bufdesc)
+   /* Perform a user mode allocation */
+ 
+   apb  = lib_umalloc(sizeof(struct ap_buffer_s));
+-  samp = lib_umemalign(MAX(up_get_dcache_linesize(), 1), bufdesc->numbytes);
++  samp = lib_umemalign(MAX(up_get_dcache_linesize(), 64), bufdesc->numbytes);
+ 
+   *bufdesc->u.pbuffer = apb;
+ 

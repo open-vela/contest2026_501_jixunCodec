@@ -1,0 +1,623 @@
+{
+  "source_version": "UI BOOT end-cue100ms 2026-11-04",
+  "tx_firmware_sha256": "ec611b27b6b35e26e830bbd6e709e12ef6d31fabb5b8d93d844422cf98821078",
+  "rx_firmware_sha256": "4d4f059f43fc949f6aba80f05c8e5417c71f8144a3d7908ecec088eb349aa7fa",
+  "rate": "3k",
+  "RX_overlay_files": [
+    "main/jx_main.c",
+    "port/jx_lora.c",
+    "port/jx_simple_role.h",
+    "port/jx_streamtx.c",
+    "port/jx_ui.c",
+    "deps/audio/ai_module/ai_voice/ai_voice.c",
+    "deps/audio/ai_module/ai_voice/ai_voice.h"
+  ],
+  "files": {
+    "common/Make.defs": {
+      "source_role": "TX",
+      "source_sha256": "4d8eb700a1d84806d7f081066f12b5549309d6706b6bded5a58d15c16e3812b3",
+      "prepared_sha256": "e9fb001193c0ee1d1e3cb507216229bde458f8d108dfde21edacdaa7360f22f0",
+      "normalization": [
+        "canonical application path apps/jixun-codec",
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "common/Makefile": {
+      "source_role": "TX",
+      "source_sha256": "7703577c76867bf1cb09decd3ca8a798e479c9b3ea438982ed9984efe89b11b7",
+      "prepared_sha256": "8a21fde51fd25bc5f87c2e21b97adde59d68c2c3c52345d4c3a6d5d0899b86a7",
+      "normalization": [
+        "canonical application path apps/jixun-codec",
+        "reject unverified 1k/6k AiBox builds"
+      ]
+    },
+    "common/csrc/a_fused.inc": {
+      "source_role": "TX",
+      "source_sha256": "24fc9b97d6c5c3bca6bf6eadf9e13072275e56490744b067dbff69885b1ad01e",
+      "prepared_sha256": "24fc9b97d6c5c3bca6bf6eadf9e13072275e56490744b067dbff69885b1ad01e",
+      "normalization": []
+    },
+    "common/csrc/blocks.c": {
+      "source_role": "TX",
+      "source_sha256": "83fd68148ba1808df7b3306cadfed5c4fdb338824ca3b1e84185a32a49341c00",
+      "prepared_sha256": "83fd68148ba1808df7b3306cadfed5c4fdb338824ca3b1e84185a32a49341c00",
+      "normalization": []
+    },
+    "common/csrc/decoder.c": {
+      "source_role": "TX",
+      "source_sha256": "dfa472c606b1484b74bf8d58a2555ef3716c5fe680cda66f25718ff7d8e56e2a",
+      "prepared_sha256": "dfa472c606b1484b74bf8d58a2555ef3716c5fe680cda66f25718ff7d8e56e2a",
+      "normalization": []
+    },
+    "common/csrc/d_fused.inc": {
+      "source_role": "TX",
+      "source_sha256": "3db9d84e4d86cec63176afa733b279b6bf50bb11fe8ffdefda403fdf0740dd60",
+      "prepared_sha256": "ea4e0aca7ff8ffe0a6279e69f130ee0b3e60e815801d1604e504b6d243978b3e",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "common/csrc/d_norm.inc": {
+      "source_role": "TX",
+      "source_sha256": "7958f787eb334c3e1761fa17c06da6fc6ee7d7c72cf01632246f65e0b4623aa2",
+      "prepared_sha256": "d1a171411b54ca3894962c6e14d5f1929c8fdaeb228d5976dbab5cba9be053f8",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "common/csrc/encoder.c": {
+      "source_role": "TX",
+      "source_sha256": "e272f3ca7a95a1ebeb37e5a7e59c90271f08179a6af86573877dc01c5e5eb1c0",
+      "prepared_sha256": "e272f3ca7a95a1ebeb37e5a7e59c90271f08179a6af86573877dc01c5e5eb1c0",
+      "normalization": []
+    },
+    "common/csrc/fsq_codec.c": {
+      "source_role": "TX",
+      "source_sha256": "851d717735092e77073c1edaa8f98a7b84091a7ef587ccc40435da2a1b167f94",
+      "prepared_sha256": "851d717735092e77073c1edaa8f98a7b84091a7ef587ccc40435da2a1b167f94",
+      "normalization": []
+    },
+    "common/csrc/int8_kernels.c": {
+      "source_role": "TX",
+      "source_sha256": "eb3e8604e1947e149ef9a66678369840c7e5de205bed5967e3164f95b8e8d818",
+      "prepared_sha256": "678123cbbb9c68949372438a398b0aa2eb9a20efaf7c2d75df5df1c689c47761",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "common/csrc/jx_amax.c": {
+      "source_role": "TX",
+      "source_sha256": "ac9b1d2f3ed8a5dffa2246ecf67f4ea8b6215bf7cb8e0a4a81ef195057126af3",
+      "prepared_sha256": "ac9b1d2f3ed8a5dffa2246ecf67f4ea8b6215bf7cb8e0a4a81ef195057126af3",
+      "normalization": []
+    },
+    "common/csrc/jx_env.c": {
+      "source_role": "TX",
+      "source_sha256": "596a9d87f6f1731121aed2e23884a017fab700d6d07da003379509483aa2e04e",
+      "prepared_sha256": "596a9d87f6f1731121aed2e23884a017fab700d6d07da003379509483aa2e04e",
+      "normalization": []
+    },
+    "common/csrc/model_config.c": {
+      "source_role": "TX",
+      "source_sha256": "0862d64f60eaf1afb265fed47cf11196a5fa3bc7d73c63cfee35bfef8d4d0130",
+      "prepared_sha256": "0862d64f60eaf1afb265fed47cf11196a5fa3bc7d73c63cfee35bfef8d4d0130",
+      "normalization": []
+    },
+    "common/csrc/model_config_1k.c": {
+      "source_role": "TX",
+      "source_sha256": "e65defd5a9c8adc845fda7bd18d4a764495b3d5466199720d997e306ea1c5b77",
+      "prepared_sha256": "e65defd5a9c8adc845fda7bd18d4a764495b3d5466199720d997e306ea1c5b77",
+      "normalization": []
+    },
+    "common/csrc/model_config_3k.c": {
+      "source_role": "TX",
+      "source_sha256": "b48fb09e4dba77c3145b583268b7a262b5c1513aa4401a3b1cf1811599f828f9",
+      "prepared_sha256": "b48fb09e4dba77c3145b583268b7a262b5c1513aa4401a3b1cf1811599f828f9",
+      "normalization": []
+    },
+    "common/csrc/model_config_6k.c": {
+      "source_role": "TX",
+      "source_sha256": "96d14bcf35126210afc7b6014c24f92a1e8db46e6f16e09b2aa82489202fabc6",
+      "prepared_sha256": "96d14bcf35126210afc7b6014c24f92a1e8db46e6f16e09b2aa82489202fabc6",
+      "normalization": []
+    },
+    "common/csrc/nn_ops.c": {
+      "source_role": "TX",
+      "source_sha256": "9a4df4429c1d009913eb827fd31e606a5bf374e6a44dcbff2652231754fba2aa",
+      "prepared_sha256": "d832b1a5517d20d9a2e118fe845dfade191e58811f1a30aa58e55a8078ec30d9",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "common/csrc/quantizer.c": {
+      "source_role": "TX",
+      "source_sha256": "637f735aa7829b444acb9704c81509e7c357d5aabd35770043cbfbac6c7a7e31",
+      "prepared_sha256": "637f735aa7829b444acb9704c81509e7c357d5aabd35770043cbfbac6c7a7e31",
+      "normalization": []
+    },
+    "common/csrc/stream_codec.c": {
+      "source_role": "TX",
+      "source_sha256": "2847b5f908110f043accbb222fa31186c62fd366f0412116af199de73b3148ab",
+      "prepared_sha256": "0ea6839ddd3c67d163052640af7975dd8656837893ada5f581e48e86d599e246",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "common/csrc/stream_ops.c": {
+      "source_role": "TX",
+      "source_sha256": "4cf45fa8483801c96896567801546dcc2c9f973417683e9c013ec076f7586f0b",
+      "prepared_sha256": "80b6b5ed16191f9fc59cac9f20f96cf8fcfc267d59f5fd174455a77d48d70da4",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "common/csrc/stream_trans.c": {
+      "source_role": "TX",
+      "source_sha256": "e5744c8d5fe887d3aefafbe44ce43ea23376683870b9b3e585ca6474d101deea",
+      "prepared_sha256": "b7fa557d5814c6491ff29eef1e21f56bda47f0f1001d2d9934ebe16e31d165f2",
+      "normalization": [
+        "strip one whitespace-only line"
+      ]
+    },
+    "common/csrc/transformer.c": {
+      "source_role": "TX",
+      "source_sha256": "a2c014d0c918da3db39e24dac0324836217332e50b24bcce9ab6434546926ade",
+      "prepared_sha256": "a2c014d0c918da3db39e24dac0324836217332e50b24bcce9ab6434546926ade",
+      "normalization": []
+    },
+    "common/include/blocks.h": {
+      "source_role": "TX",
+      "source_sha256": "bcef0bfb310373a89a8485a6f4b7748d62737199efeffa594a5e720184b07b38",
+      "prepared_sha256": "bcef0bfb310373a89a8485a6f4b7748d62737199efeffa594a5e720184b07b38",
+      "normalization": []
+    },
+    "common/include/decoder.h": {
+      "source_role": "TX",
+      "source_sha256": "cbd027c3ad1ffb7f0204834fab287ed2ae0b9ccf3103657e5581fe7fbf1be07f",
+      "prepared_sha256": "cbd027c3ad1ffb7f0204834fab287ed2ae0b9ccf3103657e5581fe7fbf1be07f",
+      "normalization": []
+    },
+    "common/include/encoder.h": {
+      "source_role": "TX",
+      "source_sha256": "4f51b22da0fb6008a389e59bd0cc3f719100f26934673c29919b65e47072c78b",
+      "prepared_sha256": "4f51b22da0fb6008a389e59bd0cc3f719100f26934673c29919b65e47072c78b",
+      "normalization": []
+    },
+    "common/include/fsq_codec.h": {
+      "source_role": "TX",
+      "source_sha256": "c7483088170bf9783ee7f1c78d69bd00ada5e42dcc1010a671b0596f5e5042ff",
+      "prepared_sha256": "c7483088170bf9783ee7f1c78d69bd00ada5e42dcc1010a671b0596f5e5042ff",
+      "normalization": []
+    },
+    "common/include/jxprof.h": {
+      "source_role": "TX",
+      "source_sha256": "6cb14388b7e218211b17a8e0f5e5b6a43402357cae4bba78fa880b0b882c6b92",
+      "prepared_sha256": "6cb14388b7e218211b17a8e0f5e5b6a43402357cae4bba78fa880b0b882c6b92",
+      "normalization": []
+    },
+    "common/include/jx_amax.h": {
+      "source_role": "TX",
+      "source_sha256": "65b2b6485487584c90ade7cb9e5262cb8c97b96ca723920b763fd4028b45494c",
+      "prepared_sha256": "65b2b6485487584c90ade7cb9e5262cb8c97b96ca723920b763fd4028b45494c",
+      "normalization": []
+    },
+    "common/include/jx_dcp.h": {
+      "source_role": "TX",
+      "source_sha256": "133dd184540bc8e52aff2d36a2e68616dcacc9243d59a0e7d978e058607a0a93",
+      "prepared_sha256": "133dd184540bc8e52aff2d36a2e68616dcacc9243d59a0e7d978e058607a0a93",
+      "normalization": []
+    },
+    "common/include/jx_env.h": {
+      "source_role": "TX",
+      "source_sha256": "878b59b0c46a71f09a5eed6fa69ed4f0867b477c05e019108b6ed5cb00505877",
+      "prepared_sha256": "878b59b0c46a71f09a5eed6fa69ed4f0867b477c05e019108b6ed5cb00505877",
+      "normalization": []
+    },
+    "common/include/jx_fastmath.h": {
+      "source_role": "TX",
+      "source_sha256": "e5136c760439712ffc0020c8f1e83740a10f3cc369e145ad4d1b681fbd0c61d7",
+      "prepared_sha256": "e5136c760439712ffc0020c8f1e83740a10f3cc369e145ad4d1b681fbd0c61d7",
+      "normalization": []
+    },
+    "common/include/jx_font_bin.h": {
+      "source_role": "TX",
+      "source_sha256": "5080d441be7767ab62372000734a86d23e121af9fcff13f3d99dde81da7b29c0",
+      "prepared_sha256": "5cedbaa5c314733e14e3f6073097353cfb265ce76b33f5e833fc874cde1e2adb",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "common/include/jx_percore.h": {
+      "source_role": "TX",
+      "source_sha256": "2ad4b778861a2acfd6298e008eaf1693d7a0968b80f96efd7c9dbe8e5e9bf82f",
+      "prepared_sha256": "2ad4b778861a2acfd6298e008eaf1693d7a0968b80f96efd7c9dbe8e5e9bf82f",
+      "normalization": []
+    },
+    "common/include/jx_ui.h": {
+      "source_role": "TX",
+      "source_sha256": "af60663ba8ac3472f2e379c5f5d312a9764901f710331254781d59f6b3e1b98c",
+      "prepared_sha256": "af60663ba8ac3472f2e379c5f5d312a9764901f710331254781d59f6b3e1b98c",
+      "normalization": []
+    },
+    "common/include/model_config.h": {
+      "source_role": "TX",
+      "source_sha256": "0ca7175b18dbc0b89c227345066b4c64f159897cd553456980fa93fc56810ee3",
+      "prepared_sha256": "0ca7175b18dbc0b89c227345066b4c64f159897cd553456980fa93fc56810ee3",
+      "normalization": []
+    },
+    "common/include/nn_infer.h": {
+      "source_role": "TX",
+      "source_sha256": "a4d8d31ef2dd90270ea45a17a9cfc0365d6b8b7ca133977da9df599a3e74cd48",
+      "prepared_sha256": "a4d8d31ef2dd90270ea45a17a9cfc0365d6b8b7ca133977da9df599a3e74cd48",
+      "normalization": []
+    },
+    "common/include/nn_ops.h": {
+      "source_role": "TX",
+      "source_sha256": "5d4132cc43cadd592d762cbdc6ab623f53fa287f6edb8bead659fe4e7b602db6",
+      "prepared_sha256": "5d4132cc43cadd592d762cbdc6ab623f53fa287f6edb8bead659fe4e7b602db6",
+      "normalization": []
+    },
+    "common/include/quantizer.h": {
+      "source_role": "TX",
+      "source_sha256": "e88be958888336ec18837cb61b2573e40400c41ec9da6d4351841360ef1104d8",
+      "prepared_sha256": "e88be958888336ec18837cb61b2573e40400c41ec9da6d4351841360ef1104d8",
+      "normalization": []
+    },
+    "common/include/stream_codec.h": {
+      "source_role": "TX",
+      "source_sha256": "3240b6b1b20dbb0bc8dd2bac70bb079bf1b06139c208814f76d15bf5eb0207cc",
+      "prepared_sha256": "3240b6b1b20dbb0bc8dd2bac70bb079bf1b06139c208814f76d15bf5eb0207cc",
+      "normalization": []
+    },
+    "common/include/stream_ops.h": {
+      "source_role": "TX",
+      "source_sha256": "b2802fdfa6166bc86a8f840ff30afb6ae35a98d844294758fecaa0eee62a536f",
+      "prepared_sha256": "b2802fdfa6166bc86a8f840ff30afb6ae35a98d844294758fecaa0eee62a536f",
+      "normalization": []
+    },
+    "common/include/stream_trans.h": {
+      "source_role": "TX",
+      "source_sha256": "7531b6f00253ff8c70e12893c28afe5917c8a2050c72a89841851a169f2fb274",
+      "prepared_sha256": "7531b6f00253ff8c70e12893c28afe5917c8a2050c72a89841851a169f2fb274",
+      "normalization": []
+    },
+    "common/include/transformer.h": {
+      "source_role": "TX",
+      "source_sha256": "71a9a6c5d4a8489dd497e05e2f5e84f6dbde8b14180c217811fcaff53cdcbfa7",
+      "prepared_sha256": "71a9a6c5d4a8489dd497e05e2f5e84f6dbde8b14180c217811fcaff53cdcbfa7",
+      "normalization": []
+    },
+    "common/main/decode_fixture.h": {
+      "source_role": "TX",
+      "source_sha256": "b53f1596c11b10636ffe7c7cb5dbfb25535f9e6df737bfba3e70cd32adbf7eac",
+      "prepared_sha256": "b53f1596c11b10636ffe7c7cb5dbfb25535f9e6df737bfba3e70cd32adbf7eac",
+      "normalization": []
+    },
+    "common/main/jx_decbench.c": {
+      "source_role": "TX",
+      "source_sha256": "10f4dce487b22865424638390e19ab84b965619be4d76bbfd3547230d568f86b",
+      "prepared_sha256": "90a091d1181f6fe0b91acff66bcc6697622a0c36149ba854a766efe8c05662c7",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "common/main/jx_main.c": {
+      "source_role": "TX",
+      "source_sha256": "96fae5450de46349d281ccce8176c7323c529703f7c9c6add4fee7d0e4c876aa",
+      "prepared_sha256": "f1c8892ecc28d32ae8a759b92e8333fc8449f2c2ae4f25b93c9e81f108ea3980",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "roles/rx/main/jx_main.c": {
+      "source_role": "RX",
+      "source_sha256": "2caec91bd6de11916d77255ee04263390f8ebb33ac2d72745f0c0ab147f61b9e",
+      "prepared_sha256": "08c8301f79128cb58e42a6c07a9e747029381e215ecabb517574a371cb555dae",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "common/main/jx_p0probe.c": {
+      "source_role": "TX",
+      "source_sha256": "604b15c1f99219bbd798d15d54c52223e812af6e243c9e1c3805109bad1065bb",
+      "prepared_sha256": "604b15c1f99219bbd798d15d54c52223e812af6e243c9e1c3805109bad1065bb",
+      "normalization": []
+    },
+    "common/main/raw_clip.h": {
+      "source_role": "TX",
+      "source_sha256": "1fd252e0b0975e1ea82c717b45665adc3602423a1948f9b1fa9a25895ca556cf",
+      "prepared_sha256": "1fd252e0b0975e1ea82c717b45665adc3602423a1948f9b1fa9a25895ca556cf",
+      "normalization": []
+    },
+    "common/main/tts_clip.h": {
+      "source_role": "TX",
+      "source_sha256": "a547e5365da71301de62fa406591caf8c422d7d88f160baab5bccd41d615ce8e",
+      "prepared_sha256": "a547e5365da71301de62fa406591caf8c422d7d88f160baab5bccd41d615ce8e",
+      "normalization": []
+    },
+    "common/port/hal_i2s.c": {
+      "source_role": "TX",
+      "source_sha256": "7a7f1dbbe8df068faa9d1abf637e0fe14b5eb2411ed87cf276d9e6a60ac4feca",
+      "prepared_sha256": "7a7f1dbbe8df068faa9d1abf637e0fe14b5eb2411ed87cf276d9e6a60ac4feca",
+      "normalization": []
+    },
+    "common/port/jx_codec.c": {
+      "source_role": "TX",
+      "source_sha256": "5751a04899ca4eef9bc1cf841aad9d37c2c111c0580aa7e853ed6a7e5507bea6",
+      "prepared_sha256": "5751a04899ca4eef9bc1cf841aad9d37c2c111c0580aa7e853ed6a7e5507bea6",
+      "normalization": []
+    },
+    "common/port/jx_codec.h": {
+      "source_role": "TX",
+      "source_sha256": "2e34f613d76a05472ba849dd1ab820151e01c9395fcd9c0eff6e0bf97ab0af82",
+      "prepared_sha256": "2e34f613d76a05472ba849dd1ab820151e01c9395fcd9c0eff6e0bf97ab0af82",
+      "normalization": []
+    },
+    "common/port/jx_lora.c": {
+      "source_role": "TX",
+      "source_sha256": "90d13b7dfe97f8a996ecf2ef8871c253ebfd8d0b47386c38d6d5d5dc38b53c5c",
+      "prepared_sha256": "fb5e0f86ea7296a6b1448afd1cfb0313043324e558ba73c511aec7651694d0c8",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "roles/rx/port/jx_lora.c": {
+      "source_role": "RX",
+      "source_sha256": "3b2fd5bd3c73d2e04a5a26d2b1c01350de1b025607dfdcc0ece50dc415938c14",
+      "prepared_sha256": "0a207582ad71512dbccbce3e3aa96dc14768a9ffe5269829ab42b029700839a2",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "common/port/jx_main.c": {
+      "source_role": "TX",
+      "source_sha256": "569c0f894cc8db38160f6a35776948d1322eaac9c2576ecc2ade9f7b2f2d4538",
+      "prepared_sha256": "569c0f894cc8db38160f6a35776948d1322eaac9c2576ecc2ade9f7b2f2d4538",
+      "normalization": []
+    },
+    "common/port/jx_net.c": {
+      "source_role": "TX",
+      "source_sha256": "185e56e1e8cf65e0f9ffbf7ed5f8701e25ed49ca1005e3009e2c588e6db6fb56",
+      "prepared_sha256": "185e56e1e8cf65e0f9ffbf7ed5f8701e25ed49ca1005e3009e2c588e6db6fb56",
+      "normalization": []
+    },
+    "common/port/jx_net.h": {
+      "source_role": "TX",
+      "source_sha256": "3a4ef1e279325332008f551122740622301b77ca80a1f526c283a2eb2c0a460f",
+      "prepared_sha256": "3a4ef1e279325332008f551122740622301b77ca80a1f526c283a2eb2c0a460f",
+      "normalization": []
+    },
+    "common/port/jx_serial.c": {
+      "source_role": "TX",
+      "source_sha256": "862f1adc1d722e520c707c1bd0558327552c923174f440089a5f9595787a0426",
+      "prepared_sha256": "862f1adc1d722e520c707c1bd0558327552c923174f440089a5f9595787a0426",
+      "normalization": []
+    },
+    "common/port/jx_serial.h": {
+      "source_role": "TX",
+      "source_sha256": "1c1e8b918c2480c4d5ee2f3feb9395457548dbbb1c8bc96118f0c34d4b04e25a",
+      "prepared_sha256": "1c1e8b918c2480c4d5ee2f3feb9395457548dbbb1c8bc96118f0c34d4b04e25a",
+      "normalization": []
+    },
+    "common/port/jx_simple_logo.h": {
+      "source_role": "TX",
+      "source_sha256": "e0707515491bfea4e80b5d6da2b7fef94191c9a83670d4fde38017aaa3545bf2",
+      "prepared_sha256": "4589ee9a2d1da6b913a98220a421628e6d50a0589579f33977ae1990cb20c5d5",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "common/port/jx_simple_role.h": {
+      "source_role": "TX",
+      "source_sha256": "05915881db94062f3d0c27a73e4f74fe1e14284dbecf4890df3d6e56f59f2ca9",
+      "prepared_sha256": "99a1d9e605873b78fbb1e9b49566b10c9da105b54d05fb4b95b0dd260bf86f47",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "roles/rx/port/jx_simple_role.h": {
+      "source_role": "RX",
+      "source_sha256": "497988b3c2364abdad36fe9d1a2573b81e91f6a1b50b87690ab671d846212f10",
+      "prepared_sha256": "816063de83435497582e7f6fe2ff5cbce7f533d7f9cc55118f115dd57151c39f",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "common/port/jx_simple_ui.inc": {
+      "source_role": "TX",
+      "source_sha256": "b909a9adf6e22872c6342630f98a9f3140b785fd179e07022579fc522f532157",
+      "prepared_sha256": "614ced93c2afacebc9db4ba196bf52201d61df5d6bcfbed2a8f110fdd2400a0b",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "common/port/jx_streamtx.c": {
+      "source_role": "TX",
+      "source_sha256": "f31166be538c26da2084248f6b56b5c1baf253cf393100bb982520340aa33ab4",
+      "prepared_sha256": "2617d495a51eeca8ba76ea7393261ee6c8fd7f7e01466b1a529781e46d8fef37",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "roles/rx/port/jx_streamtx.c": {
+      "source_role": "RX",
+      "source_sha256": "c2e381a169edf988f093b974cd1aae81df9062fe991cb0aceed17ff55a364d94",
+      "prepared_sha256": "589a8f84f06249135ecb4c9762b4be3ecc8888fcc708a183b8256ca1c2e0ba51",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "common/port/jx_testpcm.c": {
+      "source_role": "TX",
+      "source_sha256": "88a1e50a5dcf8085d0a0453d3442fdbd12d0783e916c2c9e3226459ca44ca4bb",
+      "prepared_sha256": "88a1e50a5dcf8085d0a0453d3442fdbd12d0783e916c2c9e3226459ca44ca4bb",
+      "normalization": []
+    },
+    "common/port/jx_ui.c": {
+      "source_role": "TX",
+      "source_sha256": "56ddf7fb7a7e5dc8fe1c9e247c45632216350a250bc5bf9f0b9d6f9f6ba76b42",
+      "prepared_sha256": "c623a37e9afa64e337144fe4862cad2f76205eeee617adc8da5dbff269020763",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "roles/rx/port/jx_ui.c": {
+      "source_role": "RX",
+      "source_sha256": "574094ecbda17285913d01f5f4f0b5a5b263fcce1a8efbdb6fe28476fd6907d8",
+      "prepared_sha256": "d0f7b523b62dbd81f367b0ca1e211aad8b751036726e62ec662decc84a10418d",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "common/port/jx_ui.h": {
+      "source_role": "TX",
+      "source_sha256": "6584e4d0bb684d3c03a19f15011d50221fa0ca0affeb20b7c94f6564d6e005e3",
+      "prepared_sha256": "6584e4d0bb684d3c03a19f15011d50221fa0ca0affeb20b7c94f6564d6e005e3",
+      "normalization": []
+    },
+    "common/port/jx_wire_ll.h": {
+      "source_role": "TX",
+      "source_sha256": "c438de8a2469379f240ce92c6ee91b0d437fc1df37c02d33207029b7d1be514d",
+      "prepared_sha256": "c438de8a2469379f240ce92c6ee91b0d437fc1df37c02d33207029b7d1be514d",
+      "normalization": []
+    },
+    "common/port/jx_wire_v2.h": {
+      "source_role": "TX",
+      "source_sha256": "df221cf18c0461b4682460546d978fa96b7b90397535cb293b8b193d45c96e2d",
+      "prepared_sha256": "df221cf18c0461b4682460546d978fa96b7b90397535cb293b8b193d45c96e2d",
+      "normalization": []
+    },
+    "common/weights/weights_data.h": {
+      "source_role": "TX",
+      "source_sha256": "248e67a3205fa0589888b9d22fbac82be6e4ce1cfd6297f3e6386d0b433a63b1",
+      "prepared_sha256": "248e67a3205fa0589888b9d22fbac82be6e4ce1cfd6297f3e6386d0b433a63b1",
+      "normalization": []
+    },
+    "common/weights/weights_q8.h": {
+      "source_role": "TX",
+      "source_sha256": "73ab09c79b4b9711fc243be505a6fa1b987291b979c950969624c1315c28bbe2",
+      "prepared_sha256": "73ab09c79b4b9711fc243be505a6fa1b987291b979c950969624c1315c28bbe2",
+      "normalization": []
+    },
+    "common/weights/3k/weights_data.h": {
+      "source_role": "TX",
+      "source_sha256": "248e67a3205fa0589888b9d22fbac82be6e4ce1cfd6297f3e6386d0b433a63b1",
+      "prepared_sha256": "248e67a3205fa0589888b9d22fbac82be6e4ce1cfd6297f3e6386d0b433a63b1",
+      "normalization": []
+    },
+    "common/weights/3k/weights_q8.h": {
+      "source_role": "TX",
+      "source_sha256": "73ab09c79b4b9711fc243be505a6fa1b987291b979c950969624c1315c28bbe2",
+      "prepared_sha256": "73ab09c79b4b9711fc243be505a6fa1b987291b979c950969624c1315c28bbe2",
+      "normalization": []
+    },
+    "common/deps/audio/hal/hal_delay.h": {
+      "source_role": "TX",
+      "source_sha256": "a1bb2576eee51009eac1b0dd1b7bcdc7ec04ec6a9a4862657a40086725891780",
+      "prepared_sha256": "a1bb2576eee51009eac1b0dd1b7bcdc7ec04ec6a9a4862657a40086725891780",
+      "normalization": []
+    },
+    "common/deps/audio/hal/hal_gpio.h": {
+      "source_role": "TX",
+      "source_sha256": "85d347b4f65545d802de082d95a3266074e80803be5261255bbb3b11653ad5fd",
+      "prepared_sha256": "85d347b4f65545d802de082d95a3266074e80803be5261255bbb3b11653ad5fd",
+      "normalization": []
+    },
+    "common/deps/audio/hal/hal_i2c.h": {
+      "source_role": "TX",
+      "source_sha256": "c0b4fee66f916228688685995de7be090c5e8b63024312747f510955d4d63d9d",
+      "prepared_sha256": "c0b4fee66f916228688685995de7be090c5e8b63024312747f510955d4d63d9d",
+      "normalization": []
+    },
+    "common/deps/audio/hal/hal_i2s.h": {
+      "source_role": "TX",
+      "source_sha256": "8099063bae4f55d1130fd8bc1bd0d49c947d31a9fdddc99861813bce4464cf6e",
+      "prepared_sha256": "8099063bae4f55d1130fd8bc1bd0d49c947d31a9fdddc99861813bce4464cf6e",
+      "normalization": []
+    },
+    "common/deps/audio/hal/hal_log.h": {
+      "source_role": "TX",
+      "source_sha256": "cb3dfba93eb313c7c5ab383fe93651843693d41a17d25bee47507ee758c7949c",
+      "prepared_sha256": "cb3dfba93eb313c7c5ab383fe93651843693d41a17d25bee47507ee758c7949c",
+      "normalization": []
+    },
+    "common/deps/audio/components/voice_agent/es7210.c": {
+      "source_role": "TX",
+      "source_sha256": "06a504428ab3838abbd88f8b4828e4c1449d1ab98a07aa3b8a9d474624f97b1e",
+      "prepared_sha256": "06a504428ab3838abbd88f8b4828e4c1449d1ab98a07aa3b8a9d474624f97b1e",
+      "normalization": []
+    },
+    "common/deps/audio/components/voice_agent/es7210.h": {
+      "source_role": "TX",
+      "source_sha256": "877a9d3967c36447bf0a0339d6cb1ea585c478e76d3f8847a3371bbdaa89eb8d",
+      "prepared_sha256": "877a9d3967c36447bf0a0339d6cb1ea585c478e76d3f8847a3371bbdaa89eb8d",
+      "normalization": []
+    },
+    "common/deps/audio/components/voice_agent/es8311.c": {
+      "source_role": "TX",
+      "source_sha256": "d68c69454f05589237ce40f2a7a1ceecf9ae3d3c42a7b837a60ed6bcdf93566f",
+      "prepared_sha256": "a8082cfab09370105b2c6b1cd4f6558c4829f282cb257ce257d60fde829fd662",
+      "normalization": [
+        "equivalent escaped NUL character literal"
+      ]
+    },
+    "common/deps/audio/components/voice_agent/es8311.h": {
+      "source_role": "TX",
+      "source_sha256": "398c9b85d9faae096b4f8bbe94057f0889f14cc7be39cf2455d97dde626b163f",
+      "prepared_sha256": "398c9b85d9faae096b4f8bbe94057f0889f14cc7be39cf2455d97dde626b163f",
+      "normalization": []
+    },
+    "common/deps/audio/components/voice_agent/voice_agent.c": {
+      "source_role": "TX",
+      "source_sha256": "dea5d515793277c3ce136b8392bf212910aab2e8c9050c610c77349bb0248ac0",
+      "prepared_sha256": "dea5d515793277c3ce136b8392bf212910aab2e8c9050c610c77349bb0248ac0",
+      "normalization": []
+    },
+    "common/deps/audio/components/voice_agent/voice_agent.h": {
+      "source_role": "TX",
+      "source_sha256": "0031854dfec21845cce859360a65b9c14205d8422df5cc6414e606c333a577ac",
+      "prepared_sha256": "0031854dfec21845cce859360a65b9c14205d8422df5cc6414e606c333a577ac",
+      "normalization": []
+    },
+    "common/deps/audio/ai_module/ai_voice/ai_ns.h": {
+      "source_role": "TX",
+      "source_sha256": "5fda76be0047f7ac8a65df065b93917d8604ce4accc1753140c46c43b51c10be",
+      "prepared_sha256": "5fda76be0047f7ac8a65df065b93917d8604ce4accc1753140c46c43b51c10be",
+      "normalization": []
+    },
+    "common/deps/audio/ai_module/ai_voice/ai_voice.c": {
+      "source_role": "TX",
+      "source_sha256": "8287ae866082d427f625c80b098bb5539eb9438073363b10422c5338b2c8df7b",
+      "prepared_sha256": "8287ae866082d427f625c80b098bb5539eb9438073363b10422c5338b2c8df7b",
+      "normalization": []
+    },
+    "roles/rx/deps/audio/ai_module/ai_voice/ai_voice.c": {
+      "source_role": "RX",
+      "source_sha256": "31d22d680ea2ed544116541135f05687ff171f51981ede0ce97cf8bf41a64205",
+      "prepared_sha256": "c4c1153e506ce8849306b3058d3bd7c011aef904cfc53bb1d9167f4b2f67206c",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "common/deps/audio/ai_module/ai_voice/ai_voice.h": {
+      "source_role": "TX",
+      "source_sha256": "56014bf2138027a24342e663da8c7255f0d12d6cc39576e4bc549730f851c9d8",
+      "prepared_sha256": "65964109cd1978a81979ac249730263d88b2ab5b84cf70eb99df80e15c948e61",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    },
+    "roles/rx/deps/audio/ai_module/ai_voice/ai_voice.h": {
+      "source_role": "RX",
+      "source_sha256": "3964c05dc3321656004bb67e372e9c929ca65e6baf6b86cd2b76d52acb7475bf",
+      "prepared_sha256": "dc1a67c67dfb3182c78d0a5fd1ade2c7b8b4e8724ee282baf8bf56201c1dc93b",
+      "normalization": [
+        "normalize source line endings to LF for Git portability"
+      ]
+    }
+  },
+  "model_tensors_unchanged": true,
+  "prepared_firmware_binary_equivalence": "not claimed; source paths and sanitized config changed",
+  "model_reference_check": "../../docs/AiBox模型核对_20261104.json",
+  "model_tensors_unchanged_scope": "unchanged by repository preparation; encoder already uses 32 channels"
+}

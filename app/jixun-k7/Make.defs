@@ -1,0 +1,3 @@
+ifneq ($(CONFIG_EXAMPLES_JIXUN_K7),)
+CONFIGURED_APPS += $(APPDIR)/examples/jixun_k7
+endif

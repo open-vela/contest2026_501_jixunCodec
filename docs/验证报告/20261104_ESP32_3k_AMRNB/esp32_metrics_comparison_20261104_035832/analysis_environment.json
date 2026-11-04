@@ -1,0 +1,11 @@
+{
+  "python": "3.14.4 (tags/v3.14.4:23116f9, Apr  7 2026, 14:10:54) [MSC v.1944 64 bit (AMD64)]",
+  "versions": {
+    "numpy": "2.5.2",
+    "scipy": "1.18.1",
+    "pesq": "0.0.4",
+    "pystoi": "0.4.1",
+    "pyserial": "3.5",
+    "esptool": "5.4.0"
+  }
+}
