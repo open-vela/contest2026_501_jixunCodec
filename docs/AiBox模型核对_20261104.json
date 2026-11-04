@@ -1,0 +1,50 @@
+{
+  "scope": "decoder",
+  "compared_tensors": 139,
+  "compared_float32_values": 146941,
+  "selected_float32_bit_identical": true,
+  "whole_model_identical": false,
+  "other_scope_differences": [
+    {
+      "name": "encoder.blocks.0.conv_1.bias",
+      "kind": "shape",
+      "reference_shape": [
+        80
+      ],
+      "prepared_shape": [
+        32
+      ]
+    },
+    {
+      "name": "encoder.blocks.0.conv_1.weight",
+      "kind": "shape",
+      "reference_shape": [
+        80,
+        20,
+        1
+      ],
+      "prepared_shape": [
+        32,
+        20,
+        1
+      ]
+    },
+    {
+      "name": "encoder.blocks.0.conv_2.weight",
+      "kind": "shape",
+      "reference_shape": [
+        16,
+        81,
+        1
+      ],
+      "prepared_shape": [
+        16,
+        33,
+        1
+      ]
+    }
+  ],
+  "reference_sha256": "7abe6fae81b023e323d747dd091a1db9c50099409fcad0800d15b48b75bef3dd",
+  "prepared_adapter_sha256": "248e67a3205fa0589888b9d22fbac82be6e4ce1cfd6297f3e6386d0b433a63b1",
+  "limitation": "dequantized storage adapter only; runtime kernels not evaluated"
+}

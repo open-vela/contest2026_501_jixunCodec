@@ -1,0 +1,22 @@
+{
+  "codec_compute_both_on_ESP32": true,
+  "same_board_MAC": "30:ed:a0:be:3f:68",
+  "AI_decode_runs": 3,
+  "AMR_cases": 3,
+  "AMR_runs": 9,
+  "same_source_8k_inputs_verified": true,
+  "original_AMR_source_files_unchanged": 350,
+  "original_AMR_supplied_firmware_unchanged": true,
+  "baseline_CPU_clock_observed_Hz": 240000000,
+  "all_report_links_local_and_valid": true,
+  "recovery": {
+    "original_flash_prefix_restored": true,
+    "COM18_current_AI_receiver_restored": true,
+    "automatic_RX_READY": true,
+    "ports_released": true,
+    "COM12_unchanged": true
+  },
+  "known_AI_radio_failures_retained": true,
+  "no_AMR_LoRa_claim": true,
+  "metrics_report_reproducible_from_saved_ESP32_PCM": true
+}

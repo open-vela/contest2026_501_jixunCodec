@@ -1,0 +1,20 @@
+{
+  "device": "ESP32-S3 COM18 / 30:ed:a0:be:3f:68",
+  "CPU_MHz": 240,
+  "AI_decoder": "NuttX, parallel requested, step16, window128, depth1",
+  "AMR": "User-supplied ESP-IDF firmware, MR475, DTX off, single task",
+  "all_codec_computation": "ESP32 only",
+  "host_tasks": "Frozen input preparation/resampling, USB/log collection, waveform metrics; no host codec simulation used as measured result",
+  "quality_sample_rate": 8000,
+  "AI_declared_delay_samples_at_16k": 4118,
+  "AMR_fixed_alignment_samples_at_8k": 40,
+  "AMR_alignment_calibration": "Once on fixed2s run1, lag constrained to 0..400 at8k; applied unchanged to every clip/run. This 5ms waveform offset is NOT full algorithm or first-audio latency.",
+  "quality_preprocessing": "Both waveforms DC removed; no output gain fit or per-clip external lag search. PESQ and STOI retain their standard internal processing.",
+  "segmental_SNR": "30ms window,10ms hop,-60dBFS reference threshold,clipped[-10,35]dB",
+  "versions": {
+    "numpy": "2.5.2",
+    "scipy": "1.18.1"
+  },
+  "radio_comparison": "AMR baseline has no LoRa transport or speaker path. No AMR RF first-audio/loss/continuous-playback claim.",
+  "memory_warning": "AI decoder arena peak, AMR source-calculated preallocated buffers, and free heap are different scopes; no memory reduction ratio is computed."
+}

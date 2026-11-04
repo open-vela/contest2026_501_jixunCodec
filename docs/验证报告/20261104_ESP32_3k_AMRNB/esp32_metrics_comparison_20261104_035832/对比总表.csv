@@ -1,0 +1,18 @@
+metric,AI,AMR,unit,scope
+decoder_mean_work_ms_fixed3s,8470.0,152.57666666666668,ms,"Source3s, actual output3.264s/3.280s, framework/configuration disclosed"
+decoder_RTF_processed_fixed3s,2.5949754901960786,0.04651727642276423,time/audio time,Actual generated duration normalized
+fixed2s_pesq_nb,2.5591442584991455,3.3041820526123047,score/dB,AI：已收齐包且PCM与基线一致的固定输入轮；AMR：本地串口编解码
+fixed2s_stoi,0.8508702755798879,0.8918353078832609,score/dB,AI：已收齐包且PCM与基线一致的固定输入轮；AMR：本地串口编解码
+fixed2s_snr_db,1.1245374167255722,4.5770836597181175,score/dB,AI：已收齐包且PCM与基线一致的固定输入轮；AMR：本地串口编解码
+fixed2s_segmental_snr_db,0.5271558325233017,2.7086965462335812,score/dB,AI：已收齐包且PCM与基线一致的固定输入轮；AMR：本地串口编解码
+fixed2s_si_sdr_db,0.64844315703092,2.9420529801104474,score/dB,AI：已收齐包且PCM与基线一致的固定输入轮；AMR：本地串口编解码
+human2s_pesq_nb,2.8928005695343018,3.404092788696289,score/dB,AI：冻结真人录音的既有无线输出；AMR：相同录音经8k重采样本地编解码
+human2s_stoi,0.8956401499560741,0.8976536496053443,score/dB,AI：冻结真人录音的既有无线输出；AMR：相同录音经8k重采样本地编解码
+human2s_snr_db,2.518542872353129,4.428224412170064,score/dB,AI：冻结真人录音的既有无线输出；AMR：相同录音经8k重采样本地编解码
+human2s_segmental_snr_db,-0.9248134523630683,2.123216231886085,score/dB,AI：冻结真人录音的既有无线输出；AMR：相同录音经8k重采样本地编解码
+human2s_si_sdr_db,2.7927341163545503,2.7789579910439306,score/dB,AI：冻结真人录音的既有无线输出；AMR：相同录音经8k重采样本地编解码
+fixed3s_pesq_nb,3.074014186859131,3.4285476207733154,score/dB,AI：同源3秒语音的固定token本地解码；AMR：同源语音本地编解码
+fixed3s_stoi,0.8790126021350663,0.8867311743176656,score/dB,AI：同源3秒语音的固定token本地解码；AMR：同源语音本地编解码
+fixed3s_snr_db,5.869605473569013,4.452373613899382,score/dB,AI：同源3秒语音的固定token本地解码；AMR：同源语音本地编解码
+fixed3s_segmental_snr_db,4.755318989371446,2.601692616231446,score/dB,AI：同源3秒语音的固定token本地解码；AMR：同源语音本地编解码
+fixed3s_si_sdr_db,4.6764209476290395,2.7618159453656483,score/dB,AI：同源3秒语音的固定token本地解码；AMR：同源语音本地编解码

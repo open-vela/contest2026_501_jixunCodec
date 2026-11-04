@@ -12,3 +12,20 @@
 *.pptx binary
 *.docx binary
 *.pdf binary
+
+# K7 source should retain the checksummed LF form after checkout on Windows.
+.gitattributes text eol=lf
+.gitignore text eol=lf
+NOTICE text eol=lf
+SHA256SUMS.k7.txt text eol=lf
+app/jixun-k7/** text eol=lf
+board/kickpi-k7/** text eol=lf
+board/kickpi-k7/patches/*.patch binary
+host/k7/** text eol=lf
+docs/kickpi-k7/*.json text eol=lf
+docs/kickpi-k7/*.png binary
+
+# Keep upstream/vendor and generated data byte-for-byte after LF normalization.
+# Project-authored code retains the normal whitespace checks.
+app/jixun-k7/speex/** whitespace=-blank-at-eof,-space-before-tab
+app/jixun-k7/ui/jx_font_*.c whitespace=-blank-at-eof

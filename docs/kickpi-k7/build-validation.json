@@ -1,0 +1,36 @@
+{
+  "roles": {
+    "master": {
+      "passed": true,
+      "bytes": 2419728,
+      "sha256": "fcf5d4bbee38b9e690a715028f42e7270ceec368b0c665014f2c538b2ef5826d"
+    },
+    "slave": {
+      "passed": true,
+      "bytes": 2419728,
+      "sha256": "7afcf55f2da8bf1e9244adb3fe1a9b562bdd59b99d202ed252956def91e18723"
+    }
+  },
+  "passed": true,
+  "baseline": "fresh fixed upstream source archives",
+  "application_source_unchanged": true,
+  "original_sdk_modified": false,
+  "patch_preflight_no_sdk_writes": true,
+  "checked_at": "2026-11-04T21:43:30.619169+08:00",
+  "compiler": "aarch64-none-elf-gcc 13.4.0",
+  "new_builds_installed_on_hardware": false,
+  "preparation_regressions": {
+    "repeat_apply_twice_passed": true,
+    "source_drift_rejected_before_other_writes": true,
+    "original_sdk_source_config_startup_unchanged": true,
+    "configuration_differences": {
+      "CONFIG_BASE_DEFCONFIG": {
+        "accepted": "\"../configs/jixun_voice_ui\"",
+        "prepared": "\"../configs/jixun_k7_ui\""
+      }
+    }
+  },
+  "source_changes_from_accepted_release": "generator comment cleanup and CRLF-to-LF normalization only; runtime statements and weight arrays unchanged",
+  "upstream_submission_base": "c6c87266eb4112732cc550fa7c1277d651200c29",
+  "git_canonical_source_and_config_rebuilt": true
+}

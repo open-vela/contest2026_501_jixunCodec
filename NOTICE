@@ -8,3 +8,20 @@ upstream components remain under their respective upstream licenses.
 The model weights, test audio, technical report, demonstration video and photos
 in this repository are supplied for the 2026 openvela AI hardware developer
 contest submission and must not be represented as third-party upstream assets.
+
+2026-11 AiBox profile: the project-specific UI, role overlays, SX1262 integration
+and model runtime retain their original source notices. The profile snapshots
+a separate reference SDK; its NuttX/ESP-IDF dependencies keep upstream licenses.
+No new third-party model or asset license is granted by this preparation.
+
+K7 target additions (app/jixun-k7 and board/kickpi-k7):
+- RK3576 board adaptation uses open-vela/contest2026_062_PharosTech and
+  BeaconCat/nuttx; upstream copyrights and license notices are retained in patches.
+- SpeexDSP retains its upstream BSD-style license; see app/jixun-k7/speex/COPYING.
+- Noto Sans CJK SC generated font subsets use the SIL Open Font License 1.1;
+  see app/jixun-k7/ui/Noto-COPYRIGHT.txt. The generator's original workstation
+  paths have been removed from comments without changing glyph data.
+- LVGL v9.2.1, libuv v1.46.0 and microADB are external dependencies and retain
+  their own upstream licenses. See board/kickpi-k7/sources.lock.json.
+- Vendor boot-chain binary payloads, toolchains, system backups and user speech
+  recordings are not part of the K7 source update.

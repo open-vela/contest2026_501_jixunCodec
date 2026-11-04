@@ -1,0 +1,24 @@
+{
+  "ui_design": "original_deployed_console",
+  "both_ui_installed": true,
+  "both_physical_style_touch_confirmed": true,
+  "warm_call_final_tx": 288,
+  "warm_call_final_rx": 289,
+  "warm_call_seq_gaps": 0,
+  "warm_call_lora_snr_db": [
+    11.25,
+    14.25
+  ],
+  "master_firmware_sha256": "b44d8faa1b0d168f5dcde14e2ba8c9981eea293117c626c4e484be5b26da1fd0",
+  "slave_firmware_sha256": "4768df555c5034eaf64d00d8172114a5f9f340c7d7a41158ea300600800aeae0",
+  "both_ui_final_acceptance": true,
+  "master_call": {
+    "tx_packets": 227,
+    "rx_packets": 227,
+    "seq_gaps": 0,
+    "snr_min_db": 10.25,
+    "snr_max_db": 14.25
+  },
+  "both_cold_boot_verified": true,
+  "idle_canary_root_cause_fixed": false
+}

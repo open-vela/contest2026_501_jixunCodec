@@ -1,0 +1,10 @@
+--- a/src/unix/nuttx.c
++++ b/src/unix/nuttx.c
+@@ -35,6 +35,7 @@
+ #include <unistd.h>
+ 
+ #include <nuttx/tls.h>
++#include <nuttx/tls_task.h>
+ 
+ int uv_exepath(char* buffer, size_t* size) {
+   return UV_ENOTSUP;

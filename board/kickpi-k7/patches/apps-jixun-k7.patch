@@ -1,0 +1,207 @@
+diff --git a/audioutils/alsa-lib/Makefile b/audioutils/alsa-lib/Makefile
+--- a/audioutils/alsa-lib/Makefile
++++ b/audioutils/alsa-lib/Makefile
+@@ -20,7 +20,10 @@
+ 
+ include $(APPDIR)/Make.defs
+ 
+-CSRCS += $(filter-out aplay.c arecord.c, $(wildcard *.c))
++CSRCS += $(filter-out aplay.c arecord.c pcm_dmix.c, $(wildcard *.c))
++ifeq ($(CONFIG_AUDIOUTILS_ALSA_LIB_DEVICE_DMIX),y)
++CSRCS += pcm_dmix.c
++endif
+ 
+ CFLAGS += -DOUTSIDE_SPEEX -DRANDOM_PREFIX=nuttx
+ 
+diff --git a/audioutils/alsa-lib/pcm_hw.c b/audioutils/alsa-lib/pcm_hw.c
+--- a/audioutils/alsa-lib/pcm_hw.c
++++ b/audioutils/alsa-lib/pcm_hw.c
+@@ -761,7 +761,33 @@
+   ret = ioctl(hw->fd, AUDIOIOC_GETLATENCY, delayp);
+   if (ret < 0)
+     {
+-      return -errno;
++      int error = errno;
++      long queued;
++
++      if (error != ENOTTY && error != ENOSYS && error != ENOTSUP)
++        {
++          return -error;
++        }
++
++      /* Some raw codec lower halves have no GETLATENCY ioctl. Use the
++       * completed-period counters instead. This measures software queue
++       * depth; it cannot locate the current DMA position within a period.
++       * Capture's partial period has already been read, whereas playback's
++       * partial period is still waiting to be submitted. */
++
++      queued = (long)(pcm->appl - hw->status->tail);
++      if (pcm->stream == SND_PCM_STREAM_CAPTURE)
++        {
++          avail = ((long)pcm->periods - queued) * pcm->period_size -
++                  hw->offset;
++        }
++      else
++        {
++          avail = queued * pcm->period_size + hw->offset;
++        }
++
++      *delayp = avail > 0 ? avail : 0;
++      return 0;
+     }
+ 
+   avail = (pcm->appl - hw->status->head) * pcm->period_size;
+diff --git a/audioutils/speexdsp/Makefile b/audioutils/speexdsp/Makefile
+--- a/audioutils/speexdsp/Makefile
++++ b/audioutils/speexdsp/Makefile
+@@ -47,6 +47,11 @@
+ clean::
+ 	$(call DELFILE, $(OBJS))
+ 
++# The isolated Jixun SDK vendors and hashes this source; never remove it on distclean.
++ifeq ($(JX_OFFLINE_SDK),1)
++context::
++	@test -f $(SPEEXDSP_UNPACKDIR)/include/speex/speex_resampler.h || { echo "Missing vendored SpeexDSP source"; exit 1; }
++else
+ # Download and unpack tarball if no git repo found
+ ifeq ($(wildcard $(SPEEXDSP_UNPACKDIR)/.git),)
+ context:: $(SPEEXDSP_UNPACKDIR)
+@@ -55,4 +60,6 @@
+ 	$(call DELDIR, $(SPEEXDSP_UNPACKDIR))
+ endif
+ 
++endif # JX_OFFLINE_SDK
++
+ include $(APPDIR)/Application.mk
+diff --git a/graphics/lvgl/Make.defs b/graphics/lvgl/Make.defs
+--- a/graphics/lvgl/Make.defs
++++ b/graphics/lvgl/Make.defs
+@@ -21,6 +21,10 @@
+ ifneq ($(CONFIG_GRAPHICS_LVGL),)
+ CONFIGURED_APPS += $(APPDIR)/graphics/lvgl
+ 
++# NuttX Kconfig empty strings are not C declaration attributes.
++CFLAGS += -DLV_ATTRIBUTE_MEM_ALIGN= -DLV_ATTRIBUTE_LARGE_CONST=
++CXXFLAGS += -DLV_ATTRIBUTE_MEM_ALIGN= -DLV_ATTRIBUTE_LARGE_CONST=
++
+ # It allows `<lvgl/lvgl.h>` import.
+ 
+ CFLAGS += ${INCDIR_PREFIX}$(APPDIR)/graphics/lvgl
+diff --git a/graphics/lvgl/Makefile b/graphics/lvgl/Makefile
+--- a/graphics/lvgl/Makefile
++++ b/graphics/lvgl/Makefile
+@@ -121,6 +121,6 @@
+ 
+ ifeq ($(wildcard $(LVGL_UNPACKNAME)/.git),)
+ distclean::
+-	$(call DELDIR, $(LVGL_UNPACKNAME))
+-	$(call DELFILE, $(LVGL_TARBALL))
++	# Preserve the pinned LVGL source in this isolated offline SDK.
++	# Preserve its SHA-verified release archive as well.
+ endif
+diff --git a/system/adb/Makefile b/system/adb/Makefile
+--- a/system/adb/Makefile
++++ b/system/adb/Makefile
+@@ -28,11 +28,15 @@
+ ADB_UNPACKDIR := $(ADB_DIR)/$(ADB_UNPACKNAME)
+ 
+ $(ADB_UNPACKDIR):
++ifeq ($(JX_OFFLINE_SDK),1)
++	$(error Offline microADB source missing: $(ADB_UNPACKDIR))
++else
+ 	@echo "Downloading: $(ADB_UNPACKNAME)"
+ 	$(Q) curl -O -L $(ADB_URL)/$(ADB_VERSION).zip
+ 	$(Q) unzip -o $(ADB_VERSION).zip
+ 	$(call DELFILE, $(ADB_VERSION).zip)
+ 	$(call MOVEFILE, $(ADB_UNPACKNAME)-$(ADB_VERSION), $(ADB_UNPACKDIR))
++endif
+ 
+ # adb server app
+ 
+@@ -94,7 +98,9 @@
+ context:: $(ADB_UNPACKDIR)
+ 
+ distclean::
++ifneq ($(JX_OFFLINE_SDK),1)
+ 	$(call DELDIR, $(ADB_UNPACKDIR))
++endif
+ endif
+ 
+ include $(APPDIR)/Application.mk
+diff --git a/system/adb/adb_main.c b/system/adb/adb_main.c
+--- a/system/adb/adb_main.c
++++ b/system/adb/adb_main.c
+@@ -25,7 +25,7 @@
+ #include "adb.h"
+ 
+ #include <syslog.h>
+-#include <nuttx/streams.h>
++#include <stdio.h>
+ 
+ #if defined(CONFIG_ADBD_BOARD_INIT) || defined (CONFIG_BOARDCTL_RESET) || \
+     defined(CONFIG_ADBD_USB_BOARDCTL)
+@@ -43,12 +43,11 @@
+ void adb_log_impl(int priority, FAR const char *func, int line,
+                   FAR const char *fmt, ...)
+ {
+-  struct va_format vaf;
++  char message[256];
+   va_list ap;
+ 
+   va_start(ap, fmt);
+-  vaf.fmt = fmt;
+-  vaf.va  = &ap;
++  vsnprintf(message, sizeof(message), fmt, ap);
+ 
+   switch (priority)
+     {
+@@ -66,7 +65,7 @@
+         break;
+     }
+ 
+-  syslog(priority, "%s (%d): %pV", func, line, &vaf);
++  syslog(priority, "%s (%d): %s", func, line, message);
+   va_end(ap);
+ }
+ 
+diff --git a/system/libuv/Makefile b/system/libuv/Makefile
+--- a/system/libuv/Makefile
++++ b/system/libuv/Makefile
+@@ -30,7 +30,11 @@
+ 
+ $(LIBUV_TARBALL):
+ 	@echo "Downloading: $(LIBUV_TARBALL)"
++ifeq ($(JX_OFFLINE_SDK),1)
++	$(error Offline libuv archive missing: $(LIBUV_TARBALL))
++else
+ 	$(Q) curl -L $(LIBUV_URL) -o $(LIBUV_TARBALL)
++endif
+ 
+ $(LIBUV_UNPACK): $(LIBUV_TARBALL)
+ 	@echo "Unpacking: $(LIBUV_TARBALL) -> $(LIBUV_UNPACK)"
+@@ -180,8 +184,10 @@
+ context:: $(LIBUV_UNPACK)/.patch
+ 
+ distclean::
++ifneq ($(JX_OFFLINE_SDK),1)
+ 	$(call DELDIR, $(LIBUV_UNPACK))
+ 	$(call DELFILE, $(LIBUV_TARBALL))
+ endif
++endif
+ 
+ include $(APPDIR)/Application.mk
+diff --git a/system/libuv/0009-jixun-nuttx-tls-header.patch b/system/libuv/0009-jixun-nuttx-tls-header.patch
+new file mode 100644
+--- /dev/null
++++ b/system/libuv/0009-jixun-nuttx-tls-header.patch
+@@ -0,0 +1,10 @@
++--- a/src/unix/nuttx.c
+++++ b/src/unix/nuttx.c
++@@ -35,6 +35,7 @@
++ #include <unistd.h>
++ 
++ #include <nuttx/tls.h>
+++#include <nuttx/tls_task.h>
++ 
++ int uv_exepath(char* buffer, size_t* size) {
++   return UV_ENOTSUP;

@@ -1,0 +1,12 @@
+config EXAMPLES_JIXUN_K7
+ bool "Jixun K7 offline LoRa voice node"
+ depends on ARCH_CHIP_CUSTOM
+ depends on RK3576_SPI && RK3576_GPIO && AUDIOUTILS_ALSA_LIB
+ depends on RK3576_SAI && KICKPI_K7_AUDIO
+ default n
+
+config EXAMPLES_JIXUN_K7_UI
+ bool "Jixun native K7 touchscreen console"
+ depends on EXAMPLES_JIXUN_K7 && GRAPHICS_LVGL
+ depends on KICKPI_K7_MIPI_DSI && KICKPI_K7_TOUCH_FOCALTECH
+ default n

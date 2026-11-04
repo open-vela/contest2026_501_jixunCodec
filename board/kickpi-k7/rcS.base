@@ -1,0 +1,47 @@
+/****************************************************************************
+ * boards/arm64/rk3576/kickpi_k7/src/etc/init.d/rcS
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.  The
+ * ASF licenses this file to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance with the
+ * License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ *
+ ****************************************************************************/
+
+#include <nuttx/config.h>
+
+
+#ifdef CONFIG_SYSTEM_ADBD
+/* USB gadget is manual until its enumeration fault is fixed. */
+#endif
+
+/* The eyes are the product's face, so they come up with the system rather
+ * than waiting for something to ask.  The engine owns LVGL and both panels
+ * and never returns, hence the background start.
+ */
+
+#ifdef CONFIG_NYABULA_EYE_DISPLAY
+nyabula_eye &
+#endif
+
+/* Started with no arguments the Web service runs as the product's front
+ * door: it waits for the stores, brings up the product worker -- timers,
+ * media, and the network state machine that opens the provisioning AP on a
+ * device with no network -- and serves whatever address the device has.
+ */
+
+#ifdef CONFIG_NYABULA_CORE_WEB
+nyabula_web &
+#endif

@@ -1,0 +1,798 @@
+diff --git a/app/nbootctl/nbootctl_bootctrl.c b/app/nbootctl/nbootctl_bootctrl.c
+--- a/app/nbootctl/nbootctl_bootctrl.c
++++ b/app/nbootctl/nbootctl_bootctrl.c
+@@ -953,7 +953,8 @@
+     }
+ 
+   slot_entry->priority = 15;
+-  slot_entry->tries_remaining = 0;
++  /* The pinned N-Boot also requires successful || tries_remaining. */
++  slot_entry->tries_remaining = 3;
+   slot_entry->successful = 0;
+   slot_entry->image_size = file_info.st_size;
+   slot_entry->image_version = version + 1;
+diff --git a/boards/rk3576/kickpi-k7/Kconfig b/boards/rk3576/kickpi-k7/Kconfig
+--- a/boards/rk3576/kickpi-k7/Kconfig
++++ b/boards/rk3576/kickpi-k7/Kconfig
+@@ -664,3 +664,9 @@
+ 		the board bring-up code from the build.
+ 
+ endif # ARCH_BOARD_KICKPI_K7
++
++config KICKPI_K7_TOUCH_FOCALTECH
++	bool "Jixun actual K7 FocalTech touch (I2C0 M1, 0x38)"
++	depends on KICKPI_K7_MIPI_DSI && INPUT_FT5X06
++	depends on !KICKPI_K7_TOUCH
++	default n
+diff --git a/boards/rk3576/kickpi-k7/src/Makefile b/boards/rk3576/kickpi-k7/src/Makefile
+--- a/boards/rk3576/kickpi-k7/src/Makefile
++++ b/boards/rk3576/kickpi-k7/src/Makefile
+@@ -103,4 +103,9 @@
+   RCSRCS = etc/init.d/rc.sysinit etc/init.d/rcS
+ endif
+ 
++
++ifeq ($(CONFIG_KICKPI_K7_TOUCH_FOCALTECH),y)
++CSRCS += jixun_focaltech_touch.c
++endif
++
+ include $(TOPDIR)/boards/Board.mk
+diff --git a/boards/rk3576/kickpi-k7/src/kickpi_k7_mipi_dsi.c b/boards/rk3576/kickpi-k7/src/kickpi_k7_mipi_dsi.c
+--- a/boards/rk3576/kickpi-k7/src/kickpi_k7_mipi_dsi.c
++++ b/boards/rk3576/kickpi-k7/src/kickpi_k7_mipi_dsi.c
+@@ -1,3 +1,8 @@
++/* Jixun actual-panel override: saved master/slave live DTs, 2026-11-04.
++ * 720x1280, 84 MHz, BURST|NO_EOT|LPM, FocalTech@0x38.
++ * Historical ILI9881-specific comments below describe the SDK reference
++ * module, not these two boards. The vendor table below is copied verbatim.
++ */
+ /****************************************************************************
+  * boards/rk3576/kickpi-k7/src/kickpi_k7_mipi_dsi.c
+  *
+@@ -82,6 +87,7 @@
+ #include <syslog.h>
+ 
+ #include <nuttx/arch.h>
++#include <nuttx/clk/clk.h>
+ #include <nuttx/timers/pwm.h>
+ #include <nuttx/video/mipi_display.h>
+ #include <nuttx/video/mipi_dsi.h>
+@@ -138,7 +144,7 @@
+  * mode_type is reported on the console by enable_video(), so every captured
+  * log states which one was actually programmed. */
+ 
+-#define KICKPI_K7_DSI_VID_MODE KICKPI_K7_DSI_VID_MODE_NON_BURST_SYNC_EVENTS
++#define KICKPI_K7_DSI_VID_MODE KICKPI_K7_DSI_VID_MODE_BURST
+ 
+ /* Clock-lane behaviour: true holds the clock lane in high speed for the whole
+  * frame (continuous); false lets it return to LP-11 between transmissions.
+@@ -192,7 +198,7 @@
+  * the packet is the only in-band end marker.  If it ever needs reverting, it
+  * is a one-line change and nothing else in the tree depends on it. */
+ 
+-#define KICKPI_K7_DSI_DEFAULT_EOTP true
++#define KICKPI_K7_DSI_DEFAULT_EOTP false
+ 
+ /* Panel geometry and link configuration. */
+ #define KICKPI_K7_MIPI_DSI_XRES   720
+@@ -284,7 +290,7 @@
+  * link/host disagreement is a permanent framing error, not a refresh-rate nit.
+  */
+ 
+-#define KICKPI_K7_MIPI_DSI_PIXCLK 62526316u
++#define KICKPI_K7_MIPI_DSI_PIXCLK 84000000u
+ 
+ /* Link rate implied by the pixel stream, derived from the pixel clock rather
+  * than chosen for roundness: 62526316 Hz * 24 bpp / 4 lanes = 375157896 bps
+@@ -292,7 +298,7 @@
+  * so a burst build runs at ~416.8 Mbps while the non-burst modes (what this
+  * board runs) use the raw figure. */
+ 
+-#define KICKPI_K7_MIPI_DSI_HS_RATE_RAW 375160000u
++#define KICKPI_K7_MIPI_DSI_HS_RATE_RAW 504000000ull
+ 
+ /* Burst headroom: burst transmission time-compresses a line's active pixels
+  * into one packet sent as fast as possible, so the link must deliver pixels
+@@ -320,6 +326,9 @@
+ #define KICKPI_K7_MIPI_DSI_HS_RATE KICKPI_K7_MIPI_DSI_HS_RATE_RAW
+ #endif
+ 
++_Static_assert(KICKPI_K7_MIPI_DSI_HS_RATE == 560000000ull,
++               "actual panel DSI burst rate must not overflow");
++
+ /* Panel timing (porches / sync, in pixels / lines).
+  *
+  * Vendor-supplied values: clock = 62000000, hsync_start = 720 + 10,
+@@ -329,12 +338,12 @@
+  * MIPI0_INFACE_CTRL already programs (hsync_pol = vsync_pol = 1).
+  */
+ 
+-#define KICKPI_K7_HSYNC_LEN    20
+-#define KICKPI_K7_HFRONT_PORCH 10
+-#define KICKPI_K7_HBACK_PORCH  30
+-#define KICKPI_K7_VSYNC_LEN    10
+-#define KICKPI_K7_VFRONT_PORCH 10
+-#define KICKPI_K7_VBACK_PORCH  20
++#define KICKPI_K7_HSYNC_LEN 15
++#define KICKPI_K7_HFRONT_PORCH 32
++#define KICKPI_K7_HBACK_PORCH 32
++#define KICKPI_K7_VSYNC_LEN 15
++#define KICKPI_K7_VFRONT_PORCH 21
++#define KICKPI_K7_VBACK_PORCH 12
+ 
+ #define KICKPI_K7_DSI_VC       0 /* Virtual channel */
+ 
+@@ -401,8 +410,8 @@
+ #define KICKPI_K7_BL_PWM_CTRL 1 /* RK3576_PWM1 (PWM1 @ 0x2ADD0000) */
+ #define KICKPI_K7_BL_PWM_CH   1
+ #define KICKPI_K7_BL_DEVNAME  "pwm0"
+-#define KICKPI_K7_BL_FREQ_HZ  20000     /* 20 kHz */
+-#define KICKPI_K7_BL_DUTY     (1 << 15) /* 50% duty (ub16_t) */
++#define KICKPI_K7_BL_FREQ_HZ 40000
++#define KICKPI_K7_BL_DUTY 52428 /* 80 percent, ub16 */
+ 
+ /* Backlight PWM output pin: GPIO0_B5 muxed to PWM1_CH1_M0 (AF 0xc = 12,
+  * per the RK3576 TRM IOMUX table for GPIO0_B5). */
+@@ -468,235 +477,177 @@
+  * a floor from the payload, so neither can be lost by editing a row. */
+ 
+ static const struct kickpi_k7_mipi_dsi_cmd_s g_kickpi_k7_mipi_dsi_init[] = {
+-  { KICKPI_K7_PKT_GEN_LONG, 5, _PANEL_INIT(0xFF, 0x98, 0x81, 0x03) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x01, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x02, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x03, 0x73) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x04, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x05, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x06, 0x0a) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x07, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x08, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x09, 0x01) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x0a, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x0b, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x0c, 0x01) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x0d, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x0e, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x0f, 0x1d) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x10, 0x1d) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x11, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x12, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x13, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x14, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x15, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x16, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x17, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x18, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x19, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x1a, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x1b, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x1c, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x1d, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x1e, 0x40) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x1f, 0x80) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x20, 0x06) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x21, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x22, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x23, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x24, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x25, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x26, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x27, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x28, 0x33) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x29, 0x03) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x2a, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x2b, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x2c, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x2d, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x2e, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x2f, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x30, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x31, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x32, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x33, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x34, 0x04) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x35, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x36, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x37, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x38, 0x3c) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x39, 0x35) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x3a, 0x01) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x3b, 0x40) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x3c, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x3d, 0x01) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x3e, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x3f, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x40, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x41, 0x88) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x42, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x43, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x44, 0x1f) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x50, 0x01) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x51, 0x23) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x52, 0x45) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x53, 0x67) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x54, 0x89) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x55, 0xab) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x56, 0x01) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x57, 0x23) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x58, 0x45) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x59, 0x67) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x5a, 0x89) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x5b, 0xab) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x5c, 0xcd) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x5d, 0xef) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x5e, 0x11) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x5f, 0x01) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x60, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x61, 0x15) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x62, 0x14) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x63, 0x0e) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x64, 0x0f) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x65, 0x0c) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x66, 0x0d) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x67, 0x06) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x68, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x69, 0x07) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x6a, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x6b, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x6c, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x6d, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x6e, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x6f, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x70, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x71, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x72, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x73, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x74, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x75, 0x01) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x76, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x77, 0x14) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x78, 0x15) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x79, 0x0e) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x7a, 0x0f) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x7b, 0x0c) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x7c, 0x0d) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x7d, 0x06) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x7e, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x7f, 0x07) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x80, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x81, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x82, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x83, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x84, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x85, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x86, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x87, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x88, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x89, 0x02) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x8A, 0x02) },
+-
+-  /* Page 0x04 register block. */
+-  { KICKPI_K7_PKT_GEN_LONG, 5, _PANEL_INIT(0xff, 0x98, 0x81, 0x04) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x70, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x71, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x82, 0x0f) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x84, 0x0f) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x85, 0x0d) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x32, 0xac) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x8c, 0x80) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x3c, 0xf5) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xb5, 0x07) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x31, 0x45) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x3a, 0x24) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x88, 0x33) },
+-
+-  /* Page 0x01 gamma correction block. */
+-  { KICKPI_K7_PKT_GEN_LONG, 5, _PANEL_INIT(0xff, 0x98, 0x81, 0x01) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x22, 0x09) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x31, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x53, 0x8a) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x55, 0xa2) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x50, 0x81) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x51, 0x85) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x62, 0x0D) },
+-
+-  /* The vendor table selects page 0x01 a SECOND time here, immediately
+-   * before the positive/negative gamma blocks.  Reproduced verbatim: a
+-   * repeated page select is harmless if redundant, but it is a real
+-   * difference from the blog table and hints that the vendor sequence was
+-   * assembled from two independently released blocks. */
+-  { KICKPI_K7_PKT_GEN_LONG, 5, _PANEL_INIT(0xff, 0x98, 0x81, 0x01) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xA0, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xA1, 0x1a) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xA2, 0x28) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xA3, 0x13) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xA4, 0x16) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xA5, 0x29) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xA6, 0x1d) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xA7, 0x1e) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xA8, 0x84) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xA9, 0x1c) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xAA, 0x28) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xAB, 0x75) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xAC, 0x1a) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xAD, 0x19) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xAE, 0x4d) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xAF, 0x22) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xB0, 0x28) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xB1, 0x54) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xB2, 0x66) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xB3, 0x39) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xC0, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xC1, 0x1a) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xC2, 0x28) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xC3, 0x13) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xC4, 0x16) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xC5, 0x29) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xC6, 0x1d) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xC7, 0x1e) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xC8, 0x84) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xC9, 0x1c) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xCA, 0x28) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xCB, 0x75) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xCC, 0x1a) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xCD, 0x19) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xCE, 0x4d) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xCF, 0x22) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xD0, 0x28) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xD1, 0x54) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xD2, 0x66) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0xD3, 0x39) },
+-
+-  /* Page 0x00 (normal). */
+-  { KICKPI_K7_PKT_GEN_LONG, 5, _PANEL_INIT(0xff, 0x98, 0x81, 0x00) },
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x35, 0x00) },
+-
+-  /* MADCTL: the scan directions that bring the picture upright in this
+-   * enclosure, derived from KICKPI_K7_PANEL_ORIENTATION so that the touch
+-   * coordinates are corrected in exactly the same way.  D3 (BGR) stays 0: the
+-   * R/B swap belongs to the VOP and has been removed from there; see the bit
+-   * notes above. */
+-
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x36, KICKPI_K7_MADCTL_ORIENT) },
+-
+-  /* Set the interface pixel format explicitly (3Ah = 0x77 = 24 bpp RGB888).
+-   *
+-   * The vendor table does not carry this command, and ILI9881D's RDDCOLMOD
+-   * (0Ch) reset default is 0x07, which is ALSO 24 bpp -- so on a factory-fresh
+-   * panel this is normally a no-op.  It is written anyway because "the panel
+-   * is set to something other than what the host transmits" is otherwise an
+-   * invisible degree of freedom: the host sends RGB888 either way, and any
+-   * TCON configured for 16/18 bpp would reinterpret every pixel.  Writing it
+-   * explicitly closes that question instead of assuming it. */
+-
+-  { KICKPI_K7_PKT_DCS_LONG, 0, _PANEL_INIT(0x3a, 0x77) },
+-
+-  { KICKPI_K7_PKT_DCS_LONG, 120,
+-    _PANEL_INIT(0x11, 0x00) }, /* 23 78: sleep out, 120ms  */
+-  { KICKPI_K7_PKT_DCS_LONG, 20,
+-    _PANEL_INIT(0x29, 0x00) }, /* 23 14: display on, 20ms  */
++  {0x15, 0, _PANEL_INIT(0x00, 0x00)},
++  {0x39, 0, _PANEL_INIT(0xff, 0x87, 0x56, 0x01)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x80)},
++  {0x39, 0, _PANEL_INIT(0xff, 0x87, 0x56)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xa1)},
++  {0x39, 0, _PANEL_INIT(0xb3, 0x02, 0xd0, 0x05, 0x00, 0x20, 0xfc)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x80)},
++  {0x39, 0, _PANEL_INIT(0xc0, 0x00, 0xf6, 0x00, 0x10, 0x00, 0x24)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x90)},
++  {0x39, 0, _PANEL_INIT(0xc0, 0x00, 0xf6, 0x00, 0x10, 0x00, 0x24)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xa0)},
++  {0x39, 0, _PANEL_INIT(0xc0, 0x02, 0x14, 0x00, 0x10, 0x00, 0x24)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xb0)},
++  {0x39, 0, _PANEL_INIT(0xc0, 0x00, 0xf6, 0x00, 0x10, 0x00, 0x24)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xc1)},
++  {0x39, 0, _PANEL_INIT(0xc0, 0x01, 0x27, 0x00, 0xea, 0x00, 0xc5, 0x01, 0x5f)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xd7)},
++  {0x39, 0, _PANEL_INIT(0xc0, 0x00, 0xc5, 0x00, 0x10, 0x00, 0x24)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xa3)},
++  {0x39, 0, _PANEL_INIT(0xc1, 0x00, 0x20, 0x00, 0x20, 0x00, 0x02)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x80)},
++  {0x39, 0, _PANEL_INIT(0xce, 0x01, 0x81, 0x09, 0x13, 0x00, 0x78, 0x00, 0x78, 0x00, 0x50, 0x00, 0x50, 0x00, 0x78, 0x00, 0x78)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x90)},
++  {0x39, 0, _PANEL_INIT(0xce, 0x00, 0x8e, 0x0e, 0xb6, 0x00, 0x8e, 0x80, 0x09, 0x13, 0x00, 0x04, 0x00, 0x1c, 0x1f, 0x16)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xa0)},
++  {0x39, 0, _PANEL_INIT(0xce, 0x20, 0x00, 0x00)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xb0)},
++  {0x39, 0, _PANEL_INIT(0xce, 0x22, 0x00, 0x00)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xd1)},
++  {0x39, 0, _PANEL_INIT(0xce, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xe1)},
++  {0x39, 0, _PANEL_INIT(0xce, 0x08, 0x02, 0x4d, 0x02, 0x4d, 0x02, 0x4d, 0x00, 0x00, 0x00, 0x00)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xf1)},
++  {0x39, 0, _PANEL_INIT(0xce, 0x0c, 0x06, 0x0a, 0x00, 0xe9, 0x00, 0xe9, 0x00, 0xf8)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xb0)},
++  {0x39, 0, _PANEL_INIT(0xcf, 0x00, 0x00, 0x6e, 0x72)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xb5)},
++  {0x39, 0, _PANEL_INIT(0xcf, 0x02, 0x02, 0x94, 0x98)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xc0)},
++  {0x39, 0, _PANEL_INIT(0xcf, 0x04, 0x04, 0xd8, 0xdc)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xc5)},
++  {0x39, 0, _PANEL_INIT(0xcf, 0x00, 0x00, 0x08, 0x0c)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xe8)},
++  {0x15, 0, _PANEL_INIT(0xc0, 0x40)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x80)},
++  {0x39, 0, _PANEL_INIT(0xc2, 0x84, 0x00, 0x05, 0x89, 0x83, 0x00, 0x05, 0x89)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xa0)},
++  {0x39, 0, _PANEL_INIT(0xc2, 0x82, 0x04, 0x00, 0x05, 0x89, 0x81, 0x04, 0x00, 0x05, 0x89, 0x00, 0x04, 0x00, 0x05, 0x89)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xb0)},
++  {0x39, 0, _PANEL_INIT(0xc2, 0x01, 0x04, 0x00, 0x05, 0x89, 0x02, 0x04, 0x00, 0x05, 0x89, 0x03, 0x04, 0x00, 0x05, 0x89)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xc0)},
++  {0x39, 0, _PANEL_INIT(0xc2, 0x04, 0x04, 0x00, 0x05, 0x89, 0x05, 0x04, 0x00, 0x05, 0x89)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xe0)},
++  {0x39, 0, _PANEL_INIT(0xc2, 0x77, 0x77, 0x77, 0x77)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xc0)},
++  {0x39, 0, _PANEL_INIT(0xc3, 0x99, 0x99, 0x99, 0x99)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x80)},
++  {0x39, 0, _PANEL_INIT(0xcb, 0x00, 0xc5, 0x00, 0x00, 0x05, 0x05, 0x00, 0x05, 0x0a, 0x05, 0xc5, 0x00, 0x05, 0x05, 0x00, 0xc0)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x90)},
++  {0x39, 0, _PANEL_INIT(0xcb, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xa0)},
++  {0x39, 0, _PANEL_INIT(0xcb, 0x00, 0x00, 0x00, 0x00)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xb0)},
++  {0x39, 0, _PANEL_INIT(0xcb, 0x10, 0x51, 0x94, 0x50)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xc0)},
++  {0x39, 0, _PANEL_INIT(0xcb, 0x10, 0x51, 0x94, 0x50)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x80)},
++  {0x39, 0, _PANEL_INIT(0xcc, 0x2d, 0x2d, 0x2d, 0x2d, 0x07, 0x09, 0x0b, 0x0d, 0x25, 0x25, 0x03, 0x2d, 0x22, 0x2d, 0x24, 0x2d)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x90)},
++  {0x39, 0, _PANEL_INIT(0xcc, 0x29, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x26)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x80)},
++  {0x39, 0, _PANEL_INIT(0xcd, 0x2d, 0x2d, 0x2d, 0x2d, 0x06, 0x08, 0x0a, 0x0c, 0x25, 0x00, 0x02, 0x2d, 0x22, 0x2d, 0x24, 0x2d)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x90)},
++  {0x39, 0, _PANEL_INIT(0xcd, 0x29, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x26)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xa0)},
++  {0x39, 0, _PANEL_INIT(0xcc, 0x2d, 0x2d, 0x2d, 0x2d, 0x08, 0x06, 0x0c, 0x0a, 0x25, 0x25, 0x02, 0x2d, 0x24, 0x2d, 0x23, 0x2d)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xb0)},
++  {0x39, 0, _PANEL_INIT(0xcc, 0x29, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x26)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xa0)},
++  {0x39, 0, _PANEL_INIT(0xcd, 0x2d, 0x2d, 0x2d, 0x2d, 0x09, 0x07, 0x0d, 0x0b, 0x25, 0x00, 0x03, 0x2d, 0x24, 0x2d, 0x23, 0x2d)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xb0)},
++  {0x39, 0, _PANEL_INIT(0xcd, 0x29, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x26)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x80)},
++  {0x15, 0, _PANEL_INIT(0xa7, 0x13)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x82)},
++  {0x39, 0, _PANEL_INIT(0xa7, 0x22, 0x02)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x85)},
++  {0x15, 0, _PANEL_INIT(0xc4, 0x1c)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xa0)},
++  {0x39, 0, _PANEL_INIT(0xc4, 0x8d, 0xd8, 0x8d)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x93)},
++  {0x15, 0, _PANEL_INIT(0xc5, 0x37)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x97)},
++  {0x15, 0, _PANEL_INIT(0xc5, 0x37)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xb6)},
++  {0x39, 0, _PANEL_INIT(0xc5, 0x2d, 0x2d)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x9a)},
++  {0x15, 0, _PANEL_INIT(0xc5, 0x19)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x9c)},
++  {0x15, 0, _PANEL_INIT(0xc5, 0x19)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x97)},
++  {0x15, 0, _PANEL_INIT(0xc4, 0x01)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x9b)},
++  {0x15, 0, _PANEL_INIT(0xf5, 0x4b)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x93)},
++  {0x39, 0, _PANEL_INIT(0xf5, 0x00, 0x00)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x9d)},
++  {0x15, 0, _PANEL_INIT(0xf5, 0x49)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x82)},
++  {0x39, 0, _PANEL_INIT(0xf5, 0x00, 0x00)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x8c)},
++  {0x39, 0, _PANEL_INIT(0xc3, 0x00, 0x00, 0x00)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x84)},
++  {0x39, 0, _PANEL_INIT(0xc5, 0x28, 0x28)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xa4)},
++  {0x15, 0, _PANEL_INIT(0xd7, 0x00)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x80)},
++  {0x39, 0, _PANEL_INIT(0xf5, 0x59, 0x59)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x84)},
++  {0x39, 0, _PANEL_INIT(0xf5, 0x59, 0x59, 0x59)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x96)},
++  {0x15, 0, _PANEL_INIT(0xf5, 0x59)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xa6)},
++  {0x15, 0, _PANEL_INIT(0xf5, 0x59)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xca)},
++  {0x15, 0, _PANEL_INIT(0xc0, 0x80)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xb1)},
++  {0x15, 0, _PANEL_INIT(0xf5, 0x1f)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x00)},
++  {0x39, 0, _PANEL_INIT(0xd8, 0x29, 0x2d)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x86)},
++  {0x39, 0, _PANEL_INIT(0xc0, 0x01, 0x04, 0x01, 0x01, 0x22, 0x03)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x96)},
++  {0x39, 0, _PANEL_INIT(0xc0, 0x01, 0x04, 0x01, 0x01, 0x1b, 0x03)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xa6)},
++  {0x39, 0, _PANEL_INIT(0xc0, 0x01, 0x04, 0x01, 0x01, 0x3e, 0x03)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xe9)},
++  {0x39, 0, _PANEL_INIT(0xc0, 0x01, 0x04, 0x01, 0x01, 0x1b, 0x03)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xa3)},
++  {0x39, 0, _PANEL_INIT(0xce, 0x01, 0x04, 0x01, 0x01, 0x1b, 0x03)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xb3)},
++  {0x39, 0, _PANEL_INIT(0xce, 0x01, 0x04, 0x01, 0x01, 0x1b, 0x03)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x00)},
++  {0x39, 0, _PANEL_INIT(0xe1, 0x05, 0x06, 0x09, 0x10, 0x69, 0x1a, 0x22, 0x28, 0x33, 0x98, 0x3a, 0x41, 0x47, 0x4c, 0xe5, 0x51, 0x59, 0x60, 0x67, 0x05, 0x6e, 0x75, 0x7c, 0x85, 0x08, 0x8f, 0x94, 0x9b, 0xa2, 0x22, 0xab, 0xb6, 0xc4, 0xce, 0x9e, 0xda, 0xea, 0xf7, 0xff, 0x7b)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x00)},
++  {0x39, 0, _PANEL_INIT(0xe2, 0x05, 0x06, 0x09, 0x10, 0x69, 0x1a, 0x22, 0x28, 0x33, 0x98, 0x3a, 0x41, 0x47, 0x4c, 0xe5, 0x51, 0x59, 0x60, 0x67, 0x05, 0x6e, 0x75, 0x7c, 0x85, 0x08, 0x8f, 0x94, 0x9b, 0xa2, 0x22, 0xab, 0xb6, 0xc4, 0xce, 0x9e, 0xda, 0xea, 0xf7, 0xff, 0x7b)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x00)},
++  {0x39, 0, _PANEL_INIT(0xe3, 0x05, 0x06, 0x09, 0x10, 0x69, 0x1a, 0x22, 0x28, 0x33, 0x98, 0x3a, 0x41, 0x47, 0x4c, 0xe5, 0x51, 0x59, 0x60, 0x67, 0x05, 0x6e, 0x75, 0x7c, 0x85, 0x08, 0x8f, 0x94, 0x9b, 0xa2, 0x22, 0xab, 0xb6, 0xc4, 0xce, 0x9e, 0xda, 0xea, 0xf7, 0xff, 0x7b)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x00)},
++  {0x39, 0, _PANEL_INIT(0xe4, 0x05, 0x06, 0x09, 0x10, 0x69, 0x1a, 0x22, 0x28, 0x33, 0x98, 0x3a, 0x41, 0x47, 0x4c, 0xe5, 0x51, 0x59, 0x60, 0x67, 0x05, 0x6e, 0x75, 0x7c, 0x85, 0x08, 0x8f, 0x94, 0x9b, 0xa2, 0x22, 0xab, 0xb6, 0xc4, 0xce, 0x9e, 0xda, 0xea, 0xf7, 0xff, 0x7b)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x00)},
++  {0x39, 0, _PANEL_INIT(0xe5, 0x05, 0x06, 0x09, 0x10, 0x69, 0x1a, 0x22, 0x28, 0x33, 0x98, 0x3a, 0x41, 0x47, 0x4c, 0xe5, 0x51, 0x59, 0x60, 0x67, 0x05, 0x6e, 0x75, 0x7c, 0x85, 0x08, 0x8f, 0x94, 0x9b, 0xa2, 0x22, 0xab, 0xb6, 0xc4, 0xce, 0x9e, 0xda, 0xea, 0xf7, 0xff, 0x7b)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x00)},
++  {0x39, 0, _PANEL_INIT(0xe6, 0x05, 0x06, 0x09, 0x10, 0x69, 0x1a, 0x22, 0x28, 0x33, 0x98, 0x3a, 0x41, 0x47, 0x4c, 0xe5, 0x51, 0x59, 0x60, 0x67, 0x05, 0x6e, 0x75, 0x7c, 0x85, 0x08, 0x8f, 0x94, 0x9b, 0xa2, 0x22, 0xab, 0xb6, 0xc4, 0xce, 0x9e, 0xda, 0xea, 0xf7, 0xff, 0x7b)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xcc)},
++  {0x15, 0, _PANEL_INIT(0xc0, 0x13)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x82)},
++  {0x15, 0, _PANEL_INIT(0xc5, 0x35)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x94)},
++  {0x39, 0, _PANEL_INIT(0xc5, 0x02, 0x01, 0x01)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x98)},
++  {0x39, 0, _PANEL_INIT(0xc5, 0x25, 0x01)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x9b)},
++  {0x15, 0, _PANEL_INIT(0xc5, 0x21)},
++  {0x15, 0, _PANEL_INIT(0x00, 0x9d)},
++  {0x15, 0, _PANEL_INIT(0xc5, 0x25)},
++  {0x15, 0, _PANEL_INIT(0x00, 0xd0)},
++  {0x15, 0, _PANEL_INIT(0xd0, 0x56)},
++  {0x05, 120, _PANEL_INIT(0x11)},
++  {0x05, 0, _PANEL_INIT(0x29)},
++  {0x15, 0, _PANEL_INIT(0x35, 0x00)},
+ };
+ 
+ #undef _PANEL_INIT
+@@ -738,7 +689,7 @@
+   .pixel_clock = KICKPI_K7_MIPI_DSI_PIXCLK,
+   .iface = RK3576_VOP_IFACE_MIPI_DSI,
+   .port = RK3576_VOP_PORT0,
+-  .fill_rgb = 0xff00ffu,
++  .fill_rgb = 0x10191eu,
+ };
+ 
+ /* GPIO handles claimed once in configure_pins() and cached here.  They are
+@@ -942,6 +893,7 @@
+       memset(&msg, 0, sizeof(msg));
+       msg.channel = KICKPI_K7_DSI_VC;
+       msg.type = cmd->type;
++      msg.flags = MIPI_DSI_MSG_USE_LPM;
+       msg.tx_buf = cmd->data;
+       msg.tx_len = cmd->len;
+ 
+@@ -1018,6 +970,11 @@
+           continue;
+         }
+ 
++#ifdef CONFIG_KICKPI_K7_TOUCH_FOCALTECH
++      up_mdelay(20);
++      syslog(LOG_INFO, "Jixun panel: vendor writes completed; write-only Linux profile, awaiting display verification\n");
++      return OK;
++#endif
+       n = mipi_dsi_dcs_read(dev, MIPI_DCS_GET_POWER_MODE, &pwrmode, 1);
+       if (n == 1 && (pwrmode & 0x80) != 0)
+         {
+@@ -1140,7 +1097,17 @@
+   /* 5. Now program the DSI video timing and switch to Video mode -- with the
+    *    pixel clock already running, per step 4. */
+ 
+-  ret = rk3576_mipi_dsi_enable_video(host, &g_kickpi_k7_mipi_dsi_timing);
++  /* Derive the FIRST video timing from the actual divider output. The
++   * DSI is still in command mode; never retime an already-running link. */
++  struct rk3576_dsi_video_timing measured = g_kickpi_k7_mipi_dsi_timing;
++  struct clk_s *pixel_clk = clk_get("dclk_vp0");
++  if (pixel_clk == NULL) return -ENODEV;
++  uint32_t actual = (uint32_t)clk_get_rate(pixel_clk);
++  if (actual == 0) return -EINVAL;
++  measured.pixel_clock = actual;
++  syslog(LOG_INFO, "Jixun DSI initial clock nominal=%lu actual=%lu Hz\n",
++         (unsigned long)KICKPI_K7_MIPI_DSI_PIXCLK, (unsigned long)actual);
++  ret = rk3576_mipi_dsi_enable_video(host, &measured);
+   if (ret < 0)
+     {
+       syslog(LOG_ERR, "ERROR: rk3576_mipi_dsi_enable_video failed: %d\n", ret);
+@@ -1152,7 +1119,11 @@
+ 
+   kickpi_k7_mipi_dsi_backlight_enable();
+ 
+-#ifdef CONFIG_KICKPI_K7_TOUCH
++#ifdef CONFIG_KICKPI_K7_TOUCH_FOCALTECH
++  extern int jixun_focaltech_initialize(void);
++  ret = jixun_focaltech_initialize();
++  if (ret < 0) syslog(LOG_ERR, "FocalTech initialize failed: %d\n", ret);
++#elif defined(CONFIG_KICKPI_K7_TOUCH)
+   /* 7. Touch controller.  The GT911 sits on the same module as the panel and
+    * is powered by the same supply, so its reset sequence can only run now that
+    * the module is powered.  It owns its own I2C bus (I2C0 M1), its own
+diff --git a/chips/rk3576/include/chip.h b/chips/rk3576/include/chip.h
+--- a/chips/rk3576/include/chip.h
++++ b/chips/rk3576/include/chip.h
+@@ -84,12 +84,17 @@
+ 
+ #define MPID_TO_CLUSTER_ID(mpid) ((mpid) & ~0xff)
+ 
++/* Match get_cpu_id below before any per-CPU stack or C state is used. */
++#include "cpu_topology.h"
++
+ /* clang-format off */
+ #ifdef __ASSEMBLY__
+ 
+ .macro  get_cpu_id xreg0
+   mrs    \xreg0, mpidr_el1
+-  ubfx   \xreg0, \xreg0, #0, #8
++  ubfx   \xreg0, \xreg0, #0, #9
++  orr    \xreg0, \xreg0, \xreg0, lsr #6
++  and    \xreg0, \xreg0, #7
+ .endm
+ 
+ #endif /* __ASSEMBLY__ */
+diff --git a/chips/rk3576/rk3576_boot.c b/chips/rk3576/rk3576_boot.c
+--- a/chips/rk3576/rk3576_boot.c
++++ b/chips/rk3576/rk3576_boot.c
+@@ -60,10 +60,10 @@
+  * Pre-processor Definitions
+  ****************************************************************************/
+ 
+-#define RK3576_LITTLE_NCPUS 4
+-
+-#if defined(CONFIG_SMP) && CONFIG_SMP_NCPUS > RK3576_LITTLE_NCPUS
+-#error "RK3576 SMP currently supports only the four LITTLE CPUs"
++#define RK3576_MAPPED_NCPUS 8
++
++#if defined(CONFIG_SMP) && CONFIG_SMP_NCPUS > RK3576_MAPPED_NCPUS
++#error "RK3576 SMP mapping supports at most eight CPUs"
+ #endif
+ 
+ /****************************************************************************
+@@ -156,14 +156,16 @@
+  * Name: arm64_get_mpid
+  *
+  * Description:
+- *   Map logical CPUs to the RK3576 LITTLE cluster.  Cross-cluster SMP is
+- *   not supported by this mapping.
++ *   Map logical 0..3 to A53 MPIDR 0..3 and logical 4..7 to A72
++ *   MPIDR 0x100..0x103, matching the verified K7 Linux device tree.
+  ****************************************************************************/
+ 
+ uint64_t arm64_get_mpid(int cpu)
+ {
+   DEBUGASSERT(cpu >= 0 && cpu < CONFIG_SMP_NCPUS);
+-  return cpu >= 0 && cpu < CONFIG_SMP_NCPUS ? (uint64_t)cpu : UINT64_MAX;
++  return cpu >= 0 && cpu < CONFIG_SMP_NCPUS && cpu < 8
++           ? (uint64_t)(cpu & 3) | ((uint64_t)(cpu >> 2) << 8)
++           : UINT64_MAX;
+ }
+ #endif
+ 
+diff --git a/tools/k7_pack/build_nboot_ab.sh b/tools/k7_pack/build_nboot_ab.sh
+--- a/tools/k7_pack/build_nboot_ab.sh
++++ b/tools/k7_pack/build_nboot_ab.sh
+@@ -85,6 +85,12 @@
+ WORK=$(mktemp -d)
+ trap 'rm -rf "$WORK"' EXIT HUP INT TERM
+ 
++if [ -n "${K7_VENDOR_TRUST_DIR:-}" ]; then
++  (cd "$K7_VENDOR_TRUST_DIR" && sha256sum -c SHA256SUMS)
++  for name in atf-1 atf-2 atf-3 optee; do
++    cp "$K7_VENDOR_TRUST_DIR/$name.bin" "$WORK/$name.bin"
++  done
++else
+ dd if="$BL31" of="$WORK/atf-1.bin" bs=1 skip=$((0x20000)) \
+   count=$((0x1e020)) status=none
+ dd if="$BL31" of="$WORK/atf-2.bin" bs=1 skip=$((0x40000)) \
+@@ -92,6 +98,7 @@
+ dd if="$BL31" of="$WORK/atf-3.bin" bs=1 skip=$((0x10000)) \
+   count=$((0x4000)) status=none
+ cp "$BL32" "$WORK/optee.bin"
++fi
+ cp "$NBOOT_DTB" "$WORK/kickpi-k7.dtb"
+ cat "$NBOOT_PROPER" "$NBOOT_DTB" > "$WORK/u-boot.bin"
+ 
+@@ -119,14 +126,14 @@
+       arch = "arm64"; compression = "none";
+       hash { algo = "sha256"; }; };
+     uboot { data = /incbin/("u-boot.bin"); type = "standalone";
+-      arch = "arm64"; compression = "none";
++      arch = "arm64"; os = "U-Boot"; compression = "none";
+       load = <0x40200000>; entry = <0x40200000>;
+       hash { algo = "sha256"; }; };
+   };
+   configurations {
+     default = "conf";
+     conf { description = "rk3576-evb"; firmware = "atf-1";
+-      loadables = "atf-2", "atf-3", "optee", "uboot"; fdt = "fdt"; };
++      loadables = "uboot", "atf-2", "atf-3", "optee"; fdt = "fdt"; };
+   };
+ };
+ ITS
+@@ -342,7 +349,7 @@
+   truncate -s "$CONFIG_BYTES" "$WORK/config.fat"
+ else
+   truncate -s "$CONFIG_BYTES" "$WORK/config.fat"
+-  mkfs.fat --invariant -F 32 -S 512 -n NYACONF "$WORK/config.fat" >/dev/null
++  mkfs.fat --invariant -F 16 -S 512 -n NYACONF "$WORK/config.fat" >/dev/null
+ fi
+ dd if="$WORK/config.fat" of="$IMAGE" bs=512 seek="$CONFIG_START" \
+   conv=notrunc,sparse status=none
+diff --git a/boards/rk3576/kickpi-k7/src/jixun_focaltech_touch.c b/boards/rk3576/kickpi-k7/src/jixun_focaltech_touch.c
+new file mode 100644
+--- /dev/null
++++ b/boards/rk3576/kickpi-k7/src/jixun_focaltech_touch.c
+@@ -0,0 +1,70 @@
++/* Actual Jixun K7 boards: FocalTech on I2C0 M1, address 0x38.
++ * Wiring and coordinate range come from the original boards' live DTs.
++ * Do not download the reference BSP's GT911 configuration into this module.
++ */
++#include <nuttx/config.h>
++#include <nuttx/arch.h>
++#include <nuttx/irq.h>
++#include <nuttx/i2c/i2c_master.h>
++#include <nuttx/input/ft5x06.h>
++#include <errno.h>
++#include <syslog.h>
++#include "rk3576_gpio.h"
++#include "rk3576_i2c.h"
++
++static struct gpio_dev_s *g_scl, *g_sda, *g_rst, *g_int;
++static xcpt_t g_isr;
++static void *g_arg;
++static int touch_irq(struct gpio_dev_s *dev, uint8_t pin)
++{
++  if (g_isr) return g_isr(0, NULL, g_arg);
++  return 0;
++}
++static int touch_attach(const struct ft5x06_config_s *cfg, xcpt_t isr, void *arg)
++{
++  g_isr = isr; g_arg = arg;
++  rk3576_gpio_set_int_type(g_int, RK3576_GPIO_INT_EDGE);
++  rk3576_gpio_set_int_pol(g_int, RK3576_GPIO_INT_LOW_FALLING);
++  return rk3576_gpio_irq_attach(g_int, isr ? touch_irq : NULL);
++}
++static void touch_enable(const struct ft5x06_config_s *cfg, bool on)
++{
++  if (on) rk3576_gpio_irq_enable(g_int);
++  else rk3576_gpio_irq_disable(g_int);
++}
++static void touch_clear(const struct ft5x06_config_s *cfg) { /* GPIO ISR ACKs. */ }
++static void touch_reset(const struct ft5x06_config_s *cfg, bool high)
++{
++  rk3576_gpio_write_bit(g_rst, high);
++}
++static void touch_wakeup(const struct ft5x06_config_s *cfg) { /* Always active. */ }
++static struct ft5x06_config_s g_cfg = {
++  .address=0x38, .frequency=400000,
++  .attach=touch_attach, .enable=touch_enable, .clear=touch_clear,
++  .nreset=touch_reset, .wakeup=touch_wakeup
++};
++int jixun_focaltech_initialize(void)
++{
++  int ret;
++  struct i2c_master_s *bus;
++  uint8_t reg=0xa3, chip=0;
++  if ((ret=rk3576_gpio_get(GPIO_PORT0|GPIO_PIN_C1,&g_scl))<0) return ret;
++  if ((ret=rk3576_gpio_get(GPIO_PORT0|GPIO_PIN_C2,&g_sda))<0) return ret;
++  rk3576_gpio_set_af(g_scl,9); rk3576_gpio_set_af(g_sda,9);
++  if ((ret=rk3576_gpio_get(GPIO_PORT0|GPIO_PIN_D0,&g_rst))<0) return ret;
++  if ((ret=rk3576_gpio_get(GPIO_PORT0|GPIO_PIN_C5,&g_int))<0) return ret;
++  rk3576_gpio_set_af(g_rst,0); rk3576_gpio_set_af(g_int,0);
++  rk3576_gpio_set_mode(g_rst,RK3576_GPIO_OUTPUT);
++  rk3576_gpio_set_mode(g_int,RK3576_GPIO_INPUT);
++  rk3576_gpio_set_pull(g_int,RK3576_GPIO_PULLUP);
++  touch_reset(&g_cfg,false); up_mdelay(20);
++  touch_reset(&g_cfg,true); up_mdelay(200);
++  bus=rk3576_i2c_initialize(0);
++  if (!bus) return -ENODEV;
++  struct i2c_config_s cfg={.frequency=400000,.address=0x38,.addrlen=7};
++  ret=i2c_writeread(bus,&cfg,&reg,1,&chip,1);
++  if (ret<0) {syslog(LOG_ERR,"FocalTech chip probe failed: %d\n",ret);return ret;}
++  ret=ft5x06_register(bus,&g_cfg,0);
++  syslog(LOG_INFO,"FocalTech chip=0x%02x register=%d /dev/input0 native=720x1280\n",chip,ret);
++  return ret;
++}
+diff --git a/chips/rk3576/include/cpu_topology.h b/chips/rk3576/include/cpu_topology.h
+new file mode 100644
+--- /dev/null
++++ b/chips/rk3576/include/cpu_topology.h
+@@ -0,0 +1,5 @@
++#ifndef RK3576_CPU_TOPOLOGY_H
++#define RK3576_CPU_TOPOLOGY_H
++/* A53: MPIDR 0..3; A72: MPIDR 0x100..0x103. */
++#define MPID_TO_CORE(mpid) (((mpid) & 3) | (((mpid) >> 6) & 4))
++#endif

@@ -1,0 +1,47 @@
+diff --git a/arch/arm64/include/arch.h b/arch/arm64/include/arch.h
+--- a/arch/arm64/include/arch.h
++++ b/arch/arm64/include/arch.h
+@@ -42,6 +42,12 @@
+ /* Include chip-specific IRQ definitions (including IRQ numbers) */
+ 
+ #include <arch/chip/irq.h>
++
++#ifdef CONFIG_ARCH_CHIP_RK3576
++/* The early assembly and every common scheduler/IRQ C unit must share
++ * the RK3576 cross-cluster logical CPU mapping. */
++#  include <arch/chip/cpu_topology.h>
++#endif
+ 
+ /****************************************************************************
+  * Pre-processor Prototypes
+diff --git a/drivers/audio/es8388.c b/drivers/audio/es8388.c
+--- a/drivers/audio/es8388.c
++++ b/drivers/audio/es8388.c
+@@ -1069,6 +1069,15 @@
+               caps->ac_controls.b[0] = AUDIO_TYPE_INPUT |
+                                        AUDIO_TYPE_OUTPUT |
+                                        AUDIO_TYPE_FEATURE;
++              break;
++
++            case AUDIO_FMT_PCM:
++              /* ALSA asks raw capture and PCM-wrapped playback for the
++               * sample subformats after the overall PCM capability query.
++               * Advertise the signed 16-bit LE path used by this board. */
++
++              caps->ac_controls.b[0] = AUDIO_SUBFMT_PCM_S16_LE;
++              caps->ac_controls.b[1] = AUDIO_SUBFMT_END;
+               break;
+ 
+             default:
+diff --git a/drivers/input/ft5x06.c b/drivers/input/ft5x06.c
+--- a/drivers/input/ft5x06.c
++++ b/drivers/input/ft5x06.c
+@@ -1097,7 +1097,7 @@
+   priv = kmm_zalloc(sizeof(struct ft5x06_dev_s));
+   if (!priv)
+     {
+-      ierr("ERROR: kmm_zalloc(%d) failed\n", sizeof(struct ft5x06_dev_s));
++      ierr("ERROR: kmm_zalloc(%zu) failed\n", sizeof(struct ft5x06_dev_s));
+       return -ENOMEM;
+     }
+ 

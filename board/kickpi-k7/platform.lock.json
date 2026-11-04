@@ -1,0 +1,174 @@
+{
+  "components": {
+    "nuttx": {
+      "directory": "nuttx",
+      "patch": "nuttx-jixun-k7.patch",
+      "patch_sha256": "653721e6e59ed8b96abd5d85c27d3e216275da74334f82b52aed56b5655476c7",
+      "files": [
+        {
+          "path": "arch/arm64/include/arch.h",
+          "before_sha256": "e930c53f57605553026ebfe8a5c1e89dbe071aed3323bd71b3762258690616db",
+          "after_sha256": "fc793e1719183353f4035f44d47388ff6d979b9b8102e45ada6d07a362b0f590",
+          "after_bytes": 7798
+        },
+        {
+          "path": "drivers/audio/es8388.c",
+          "before_sha256": "aed2cbb6b0ceb26807ca373a962fe03ddc0acd5396cf8a239f2a4bc71cd2f5ef",
+          "after_sha256": "745d9ec5b3ef6ff43ea95f96ca243f65bc8be24daf412c8de972d144e0765ef0",
+          "after_bytes": 102733
+        },
+        {
+          "path": "drivers/input/ft5x06.c",
+          "before_sha256": "0598803db55d3508ed2e344d1c1feaf2eda1bc7a7b0585450af92f6cc2228893",
+          "after_sha256": "b61e1e3b300ca1be4c916c48703b2e1c5256b4795e8bb300ddfbd079a1adeffb",
+          "after_bytes": 33126
+        }
+      ]
+    },
+    "bsp": {
+      "directory": "contest2026_062_PharosTech",
+      "patch": "bsp-jixun-k7.patch",
+      "patch_sha256": "cb701fd06c121d1b62e668948f6c9ba794b7b99c327268308af0a9fcc68a36c7",
+      "files": [
+        {
+          "path": "app/nbootctl/nbootctl_bootctrl.c",
+          "before_sha256": "47233e2b643e42c4d2ec1b99debceb755743b0c94fdd54e1edd118eed0dac812",
+          "after_sha256": "60c97cb52c9e05b902869110ec0f860fa649008477608082c1474764a97920d5",
+          "after_bytes": 37933
+        },
+        {
+          "path": "boards/rk3576/kickpi-k7/Kconfig",
+          "before_sha256": "2fe21aeca4a731b4d6f0af7417cd8a30b8f0571809e3885b878223c4952f83bc",
+          "after_sha256": "e3bda4efd251c5cb9015f1df4cffe5da851e818a20cdab731de986d2278758af",
+          "after_bytes": 26665
+        },
+        {
+          "path": "boards/rk3576/kickpi-k7/src/Makefile",
+          "before_sha256": "14b9dee659145c057ca8d2a3ddbc1d57cc0b93244f4dd918824bcfa9e8dce7d8",
+          "after_sha256": "ea82c4feb5fe7accfb67b138a743d1c0c3b5c7e43ddb5c48879b0a60cf2e27ea",
+          "after_bytes": 3191
+        },
+        {
+          "path": "boards/rk3576/kickpi-k7/src/kickpi_k7_mipi_dsi.c",
+          "before_sha256": "b34235f00201b799148ea903a7b15bb9110f4c6ce41821cb286fe50c56e4f7f4",
+          "after_sha256": "505a48a5021c7df63ac2194cafb62b293e66190d731456bc09b99b798a395eab",
+          "after_bytes": 50555
+        },
+        {
+          "path": "chips/rk3576/include/chip.h",
+          "before_sha256": "2e3088074322d268fc9857267e2e38fca939c76823978ea0fa976a2cb4c718e3",
+          "after_sha256": "34f258b3f18438386db8bdc9b5c7e472bc7eff16352736ccf29acc47d4095751",
+          "after_bytes": 3883
+        },
+        {
+          "path": "chips/rk3576/rk3576_boot.c",
+          "before_sha256": "0a4af88734b25d5b4087b6d54a95f39ed96e9ee0004c2575fa2ea41403e166f3",
+          "after_sha256": "411ce110b2ec70c8180605cc269aac598d08c336040c5f50918e378b23310191",
+          "after_bytes": 7890
+        },
+        {
+          "path": "tools/k7_pack/build_nboot_ab.sh",
+          "before_sha256": "5c6cfe75b6ed73a47b2bd5fc337c71cb359a6d5f7d700d6e09cf047865179856",
+          "after_sha256": "d82fcb5e83c9e1097ca082b2c2ff1f2ef92cb319c2f183c7f88f255913046744",
+          "after_bytes": 14952
+        },
+        {
+          "path": "boards/rk3576/kickpi-k7/src/jixun_focaltech_touch.c",
+          "before_sha256": null,
+          "after_sha256": "31c22de53086c1e91a1b23bc21b429c201121e16476bee9ed5c0061e86da10f6",
+          "after_bytes": 2748
+        },
+        {
+          "path": "chips/rk3576/include/cpu_topology.h",
+          "before_sha256": null,
+          "after_sha256": "3643541350a97b65360ee61ffc5e39a8cf1cbd302f3b7c83e32d87bb967979d4",
+          "after_bytes": 179
+        }
+      ]
+    },
+    "apps": {
+      "directory": "apps",
+      "patch": "apps-jixun-k7.patch",
+      "patch_sha256": "6dc10ec5a07b9124d73e1ef4385c7d8f59b4130b101d22bebf084ee8b8d43538",
+      "files": [
+        {
+          "path": "audioutils/alsa-lib/Makefile",
+          "before_sha256": "a55fde14474817c135385181c71ae31a204117c40dbcd5fb1bdf48963176414f",
+          "after_sha256": "e0f5ec256058f54d81c75671be742940ac6ea09e4d1b46fb66f6b505a2f22df8",
+          "after_bytes": 1768
+        },
+        {
+          "path": "audioutils/alsa-lib/pcm_hw.c",
+          "before_sha256": "bb03ea13248d3bd6d52fd12156d38bcacf0b73d46202a94741192b1029e8058a",
+          "after_sha256": "1c2b0ccc90c7bddf917381f8c4934cfa9d4e1133a4df834e19a779f1dea8dd0f",
+          "after_bytes": 24116
+        },
+        {
+          "path": "audioutils/speexdsp/Makefile",
+          "before_sha256": "922dfae402210fb2f110c6731253bcda1750c06b345de10d6fd56e6a2d046518",
+          "after_sha256": "63031012f5aba7d4a278c9472f6ae44ef2879f46f82338e88a8e64d7296dfc03",
+          "after_bytes": 2256
+        },
+        {
+          "path": "graphics/lvgl/Make.defs",
+          "before_sha256": "22e3f37eeb60fb53dac35d6282fd827a7311d30fce8344a9cef1095cffce7393",
+          "after_sha256": "4db67c8ff48416ff4b3cdfc498de17cd2e0418972be4a33420be0b3f9b0316cf",
+          "after_bytes": 1589
+        },
+        {
+          "path": "graphics/lvgl/Makefile",
+          "before_sha256": "b96c3e2194876c8f9b024e02a34274633d076bc40f58740383ff60917942262a",
+          "after_sha256": "92365b7ff5f05f763130251546dc4c9fb77494b98da83185777200e6c2c26150",
+          "after_bytes": 4068
+        },
+        {
+          "path": "system/adb/Makefile",
+          "before_sha256": "af599fd802c69704680be3ee09e3ddb3222bdf780d388436adfeae21479b846d",
+          "after_sha256": "b2bda7609336176030e6a80a9cdbe3bdb764d3ec63901db8a9a82c9a2e251723",
+          "after_bytes": 2982
+        },
+        {
+          "path": "system/adb/adb_main.c",
+          "before_sha256": "0a60682774bee7951f7f0e9d823533fbd46c114a4183cf59bc4d42bbd5486f4c",
+          "after_sha256": "0490a670e3852613555bf5d610c2cb7db9cbd7288f8dd936cd2e75a9ca7475fd",
+          "after_bytes": 4123
+        },
+        {
+          "path": "system/libuv/Makefile",
+          "before_sha256": "53453a3e14c224fe5af0ecfa293ceb9221542bb1766d79149da6baf247d1fe74",
+          "after_sha256": "b22750ed493897ce4056735a658aa3db1587b02d89f0253a5f3784cdcf94ef0c",
+          "after_bytes": 5055
+        },
+        {
+          "path": "system/libuv/0009-jixun-nuttx-tls-header.patch",
+          "before_sha256": null,
+          "after_sha256": "ffa4f383cd1d3a620690cc3c241e761c9fbd7a4a7ceed59d49fc5dce3e07458f",
+          "after_bytes": 210
+        }
+      ]
+    },
+    "microadb": {
+      "directory": "apps/system/adb/microADB",
+      "patch": "microadb-jixun-k7.patch",
+      "patch_sha256": "49849bb2ffab39012c83eeaab9495764ae2baa1d80cd6adb718a8548bb031188",
+      "files": [
+        {
+          "path": "hal/hal_uv_client_usb.c",
+          "before_sha256": "6e1135a7fdffd50d278c44460ee75d03c72a2762dbab701217092c44456b04a8",
+          "after_sha256": "cec751d7257b5bccd50e64a09f24a0d4a9dc164414a09c2a25984cc6767600bd",
+          "after_bytes": 6118
+        }
+      ]
+    }
+  },
+  "role_startup_sha256": {
+    "master": "fe48d3e1fd689159074c3c3a71fb8b1ee294feb886008b45100db1c133993552",
+    "slave": "1d29d77afcf29206bc71ecff4108061ad60fd4d486460f08956505d91151df91"
+  },
+  "recognized_startup_sha256": [
+    "416dcda64dbad725254ac1e7e59216a5d5475f0117c8b6b09af5258379777c88",
+    "9db1209620be09cf6fdfc97f17838b3e79594b508918527d30b6de873d60a3b8",
+    "fe48d3e1fd689159074c3c3a71fb8b1ee294feb886008b45100db1c133993552",
+    "1d29d77afcf29206bc71ecff4108061ad60fd4d486460f08956505d91151df91"
+  ]
+}

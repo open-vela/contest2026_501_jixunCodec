@@ -1,0 +1,120 @@
+{
+  "upstream_repository": "open-vela/contest2026_501_jixunCodec",
+  "upstream_base_commit": "c6c87266eb4112732cc550fa7c1277d651200c29",
+  "source_components": {
+    "nuttx": {
+      "repo": "BeaconCat/nuttx",
+      "ref": "31a860ad27b10dfa69be929250c17cebe9454be9",
+      "resolved_commit": "31a860ad27b10dfa69be929250c17cebe9454be9",
+      "url": "https://codeload.github.com/BeaconCat/nuttx/tar.gz/31a860ad27b10dfa69be929250c17cebe9454be9",
+      "sha256": "ab612e27db73d26ba207bc3acdac94e912480b2acec3d4c2d9c7007b89477d5d",
+      "bytes": 94500396
+    },
+    "bsp": {
+      "repo": "open-vela/contest2026_062_PharosTech",
+      "ref": "dev-ai-contest-2026",
+      "resolved_commit": "33edeb82c6bd6eb44b206d5299290a5ec3aac0f1",
+      "url": "https://codeload.github.com/open-vela/contest2026_062_PharosTech/tar.gz/refs/heads/dev-ai-contest-2026",
+      "sha256": "01054d0f272dc21eb3db5abb39687f4c1398e0c7c74c72851dc60bfc73820679",
+      "bytes": 11559420,
+      "instructions": []
+    },
+    "apps": {
+      "repo": "open-vela/nuttx-apps",
+      "ref": "dev-ai-contest-2026",
+      "resolved_commit": "dcc6a95c3b323e533c98fde8fb209f99e24f0fdd",
+      "url": "https://codeload.github.com/open-vela/nuttx-apps/tar.gz/refs/heads/dev-ai-contest-2026",
+      "sha256": "1add1c3204122f972582586a8737c42f34066791ea4e9d86a258bf214f892627",
+      "bytes": 4867527,
+      "instructions": []
+    },
+    "vendor": {
+      "repo": "open-vela/vendor",
+      "ref": "dev-ai-contest-2026",
+      "resolved_commit": "306db14707f55b7dadaa59053443a22e1f17959b",
+      "url": "https://codeload.github.com/open-vela/vendor/tar.gz/refs/heads/dev-ai-contest-2026",
+      "sha256": "40130f8080f79f2f81ebdccbdc07bc412f939d7b7247f8fe8fec9894b904b02f",
+      "bytes": 7366,
+      "instructions": []
+    },
+    "external": {
+      "repo": "BeaconCat/external",
+      "ref": "dev-ai-contest-2026",
+      "url": "https://codeload.github.com/BeaconCat/external/tar.gz/refs/heads/dev-ai-contest-2026",
+      "resolved_commit": "a026f9bce802c04a26620feb0911b6eabb9fcb8f",
+      "bytes": 318060,
+      "sha256": "c8ebb42de798eee2069a5162d44e06533fe8219757b4a51dda0194a579c67e09"
+    },
+    "build": {
+      "repo": "open-vela/build",
+      "resolved_commit": "305cea66a8efc749a958d8410f736e640c49496b",
+      "url": "https://codeload.github.com/open-vela/build/tar.gz/refs/heads/dev-ai-contest-2026",
+      "bytes": 26593,
+      "sha256": "02b121d7ca2f3af8668164c54de513da1feabf58b2f8ab9789b42d8aa120c35f"
+    },
+    "libuv": {
+      "repo": "libuv/libuv",
+      "tag": "v1.46.0",
+      "resolved_commit": "f0bb7e40f0508bedf6fad33769b3f87bb8aedfa6",
+      "url": "https://codeload.github.com/libuv/libuv/zip/refs/tags/v1.46.0",
+      "bytes": 1685550,
+      "sha256": "45953dc9b64db7f4f47561f9e4543b762c52adfe7c9b6f8e9efbc3b4dd7d3081"
+    },
+    "microadb": {
+      "repo": "spiriou/microADB",
+      "resolved_commit": "85cc7a90101b2ae76ee4112ba285141c8fba5012",
+      "url": "https://codeload.github.com/spiriou/microADB/zip/85cc7a90101b2ae76ee4112ba285141c8fba5012",
+      "bytes": 46238,
+      "sha256": "25a52167d72eb181d0991e5b3ff866c67d8a026f5ba0fdda1d9b14ebd1d04b61"
+    },
+    "speexdsp": {
+      "repo": "xiph/speexdsp",
+      "ref": "SpeexDSP-1.2.1",
+      "url": "https://codeload.github.com/xiph/speexdsp/tar.gz/refs/tags/SpeexDSP-1.2.1",
+      "resolved_commit": "1b28a0f61bc31162979e1f26f3981fc3637095c8",
+      "bytes": 894360,
+      "sha256": "d17ca363654556a4ff1d02cc13d9eb1fc5a8642c90b40bd54ce266c3807b91a7"
+    }
+  },
+  "dependencies": {
+    "libuv": {
+      "archive": "libuv-v1.46.0.zip",
+      "directory": "apps/system/libuv/libuv",
+      "sdk_archive": "apps/system/libuv/v1.46.0.zip",
+      "url": "https://codeload.github.com/libuv/libuv/zip/refs/tags/v1.46.0",
+      "sha256": "45953dc9b64db7f4f47561f9e4543b762c52adfe7c9b6f8e9efbc3b4dd7d3081",
+      "patched_probe_sha256": "62aae38a2a4a44474a86b993ed671f895555082a9bcf5afee6722bf8b5d01ae8"
+    },
+    "microadb": {
+      "archive": "microadb.zip",
+      "directory": "apps/system/adb/microADB",
+      "url": "https://codeload.github.com/spiriou/microADB/zip/85cc7a90101b2ae76ee4112ba285141c8fba5012",
+      "sha256": "25a52167d72eb181d0991e5b3ff866c67d8a026f5ba0fdda1d9b14ebd1d04b61"
+    },
+    "speexdsp": {
+      "archive": "speexdsp.tar.gz",
+      "directory": "apps/audioutils/speexdsp/speexdsp",
+      "url": "https://codeload.github.com/xiph/speexdsp/tar.gz/refs/tags/SpeexDSP-1.2.1",
+      "sha256": "d17ca363654556a4ff1d02cc13d9eb1fc5a8642c90b40bd54ce266c3807b91a7"
+    },
+    "lvgl": {
+      "archive": "lvgl-v9.2.1.zip",
+      "directory": "apps/graphics/lvgl/lvgl",
+      "sdk_archive": "apps/graphics/lvgl/v9.2.1.zip",
+      "stamp": ".unpacked",
+      "url": "https://codeload.github.com/lvgl/lvgl/zip/refs/tags/v9.2.1",
+      "sha256": "188861504e57632f1d25bea8dce2cac82f8411e8d3897cfe00372ac1688c01e7"
+    }
+  },
+  "compiler": {
+    "target": "aarch64-none-elf",
+    "version": "13.4.0"
+  },
+  "accepted_master_firmware_sha256": "b44d8faa1b0d168f5dcde14e2ba8c9981eea293117c626c4e484be5b26da1fd0",
+  "accepted_slave_firmware_sha256": "4768df555c5034eaf64d00d8172114a5f9f340c7d7a41158ea300600800aeae0",
+  "configuration_input": {
+    "normalization": "CRLF to LF only; configuration values unchanged",
+    "accepted_sha256": "a7896cbd64a1b2f9a8ca67e33cb6c00c9b9aecffd38cc47f2be83daa95547d2b",
+    "prepared_sha256": "4390049bb7e87a489981bb802e45b123a805f48b54a62e0a9c9db85c0882a7f8"
+  }
+}

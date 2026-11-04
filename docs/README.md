@@ -1,10 +1,29 @@
-# Documentation index
+# 文档入口
 
-- `验证报告/三档稳定性回归_20260920.md`: latest 1K/3K/6K end-to-end results.
-- `验证报告/双板300轮稳定性_20260920.md`: 50-round benchmark results on each board and rate.
-- `验证报告/端到端时延分析_20260920.md`: interactive timing breakdown.
-- `验证报告/码率质量对比_20260919.md`: PESQ-WB, SNR and correlation comparison.
-- `验证报告/传统编码最低档对照_20260920.md`: low-rate codec context and sources.
-- `验证报告/原始数据/`: summary JSON and raw cycle logs used by the report.
+## 当前 AiBox 与 2026-11-04 整理
 
-The final human-readable submission artifacts are in `deliverables/`.
+- [当前版本与限制](AiBox当前版本与限制_20261104.md)：原固件身份、提示音时序、通过轮次和未解决问题。
+- [ESP32 3k 与 AMR-NB 对比](验证报告/20261104_ESP32_3k_AMRNB/README.md)：量化指标、优势、差距及测评口径。
+- [仓库要求与本次更新](仓库要求与本次更新_20261104.md)：官方要求对照与待办。
+- [整理验证记录](整理验证记录_20261104.md)：本轮检查范围，独立于历史板测。
+- [AiBox 应用](../app/jixun-aibox/README.md)、[板级配置](../board/esp32s3-aibox/README.md)、[离线评分](../host/benchmarks/README.md)。
+
+## 历史 BOX 版本
+
+以下是 2026-09 的历史结果，硬件、固件和链路与当前 AiBox 不同。
+
+- [历史使用说明](历史BOX使用说明_20260920.md)
+- `验证报告/三档稳定性回归_20260920.md`
+- `验证报告/双板300轮稳定性_20260920.md`
+- `验证报告/端到端时延分析_20260920.md`
+- `验证报告/码率质量对比_20260919.md`
+- `验证报告/传统编码最低档对照_20260920.md`
+- `验证报告/原始数据/`
+
+原始附件、技术报告和固件在本地 `deliverables/`，该目录不进入本次 Git 更新。
+
+## K7
+
+- [K7 验证记录](kickpi-k7/VALIDATION.md)
+- [K7 构建验证](kickpi-k7/build-validation.json)
+- [K7 板级说明](../board/kickpi-k7/README.md)

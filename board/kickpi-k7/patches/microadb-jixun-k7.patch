@@ -1,0 +1,42 @@
+diff --git a/hal/hal_uv_client_usb.c b/hal/hal_uv_client_usb.c
+--- a/hal/hal_uv_client_usb.c
++++ b/hal/hal_uv_client_usb.c
+@@ -125,6 +125,20 @@
+  * Public Functions
+  ****************************************************************************/
+ 
++/* Gadget endpoints are published asynchronously when the host configures
++ * USB.  Keep the daemon alive until the first host connection is ready.
++ */
++static int usb_uv_open_endpoint(const char *path, int flags) {
++    for (;;) {
++        int fd = open(path, flags);
++        if (fd >= 0 || (errno != ENOENT && errno != ENODEV &&
++                        errno != ENOTCONN && errno != EAGAIN)) {
++            return fd;
++        }
++        usleep(100000);
++    }
++}
++
+ int adb_uv_usb_setup(adb_context_uv_t *adbd, const char *path) {
+     char devname[32];
+     adb_client_usb_t *client;
+@@ -149,7 +163,7 @@
+     }
+ 
+     snprintf(devname, sizeof(devname), "%s/ep2", path);
+-    fd = open(devname, O_RDONLY | O_CLOEXEC);
++    fd = usb_uv_open_endpoint(devname, O_RDONLY | O_CLOEXEC);
+     if (fd < 0) {
+         adb_err("failed to open usb device %d %d\n", fd, errno);
+         return fd;
+@@ -170,7 +184,7 @@
+     }
+ 
+     snprintf(devname, sizeof(devname), "%s/ep1", path);
+-    fd = open(devname, O_WRONLY | O_CLOEXEC);
++    fd = usb_uv_open_endpoint(devname, O_WRONLY | O_CLOEXEC);
+     if (fd < 0) {
+         adb_err("failed to open usb device %d %d\n", fd, errno);
+         return fd;
