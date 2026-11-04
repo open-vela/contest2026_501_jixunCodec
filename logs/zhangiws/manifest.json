@@ -2,8 +2,8 @@
   "schema_version": "1.0",
   "team_id": "contest2026_501_jixunCodec",
   "github_login": "zhangiws",
-  "generator": "codex-collector@1.3.0+codex-rollout-adaptor",
-  "updated_at": "2026-09-20T13:24:50.852Z",
+  "generator": "codex-collector@1.3.0+desktop-rollout-adaptor",
+  "updated_at": "2026-11-04T15:31:47.170Z",
   "sessions": [
     {
       "session_id": "01a089e1-c962-71f1-aee6-3b3ed2f367a2",
@@ -98,6 +98,44 @@
         "main_size": 23831664,
         "main_mtime": "2026-09-20T07:09:13.952574+00:00",
         "captured_at": "2026-09-20T13:24:50.852Z"
+      }
+    },
+    {
+      "session_id": "01a19c4f-0ac7-7160-9868-71bcc831db7d",
+      "tool": "codex",
+      "started_at": "2026-11-02T12:50:04.957Z",
+      "last_event_at": "2026-11-04T13:46:50.316Z",
+      "event_count": 7770,
+      "raw_event_count": 32040,
+      "file_path": "logs/zhangiws/2026-11-04/codex__01a19c4f-0ac7-7160-9868-71bcc831db7d.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "gpt-6.1-sol",
+      "redacted_count_total": 7,
+      "source_integrity": {
+        "main_sha256": "747ccd1bde8ddb5e39c39e849b9bb3a39dd65674b7ae61e39ea7448447bea627",
+        "main_size": 98516339,
+        "main_mtime": "2026-11-04T13:46:56.548630+00:00",
+        "captured_at": "2026-11-04T15:31:47.170Z"
+      }
+    },
+    {
+      "session_id": "01a1a1d2-7e34-7753-b109-feaeedd8e346",
+      "tool": "codex",
+      "started_at": "2026-11-03T14:32:59.984Z",
+      "last_event_at": "2026-11-04T13:40:54.232Z",
+      "event_count": 2230,
+      "raw_event_count": 8472,
+      "file_path": "logs/zhangiws/2026-11-04/codex__01a1a1d2-7e34-7753-b109-feaeedd8e346.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "gpt-6.1-sol",
+      "redacted_count_total": 0,
+      "source_integrity": {
+        "main_sha256": "12808fb38509c539672476e2fe5e55af34546cd78606cc7d77414079e109b135",
+        "main_size": 25416110,
+        "main_mtime": "2026-11-04T13:41:00.091130+00:00",
+        "captured_at": "2026-11-04T15:31:47.170Z"
       }
     }
   ]

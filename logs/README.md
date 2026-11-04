@@ -2,6 +2,22 @@
 
 本目录包含 `zhangiws` 使用 Codex 桌面版完成极讯 Codec 项目期间的真实会话日志。
 
+## 2026-11-04 补充日志
+
+本次补充以下两个指定对话，保留原有历史日志与 manifest 会话条目：
+
+| 对话 | session | 事件数 | UTC 日期范围 |
+|---|---|---:|---|
+| K7移植openvela | `01a19c4f-0ac7-7160-9868-71bcc831db7d` | 7,770 | 2026-11-02 至 2026-11-04 |
+| esp32双板互通 | `01a1a1d2-7e34-7753-b109-feaeedd8e346` | 2,230 | 2026-11-03 至 2026-11-04 |
+
+- 按 `logs/zhangiws/<UTC日期>/codex__<session_id>.jsonl` 整理，共 5 个 JSONL 文件，新增 10,000 条事件；同一会话跨日期的 `seq` 连续递增。
+- 使用官方 `1.0` event/manifest schema 和 Codex 消息解析规则，并补充桌面版 `function_call` / `custom_tool_call` 及对应输出的字段转换。每条记录的 `metadata.source_line` 对应原始 rollout 行号。
+- 导出真实用户消息、助手消息、工具输入和输出；运行环境注入、界面上下文和重复传输事件不作为对话再次导出。原始推理记录为加密内容，未解密、未填造 `thinking` 字段。
+- 使用凭据模式进行脱敏，保留事件次序与计数；源文件 SHA256、大小、修改时间和采集时间记录在 manifest 的 `source_integrity` 中。
+- 校验使用官方工具仓 `open-vela/.claude` 的 `ac36068f8571b2cced14c5f23f6cebb47026d1c6` 版本。下方“导出方式”和“会话清单”记录 2026-09 的历史导出。
+- 官方 `validate-log.py logs/` 校验结果：`20 files / 85,800 events / ALL OK`；其中本次新增 `5 files / 10,000 events`。
+
 ## 导出方式
 
 - 来源：`$CODEX_HOME/sessions/**/rollout-*.jsonl` 中 `session_meta.cwd=E:\jixuncodec_prj` 的项目会话。
